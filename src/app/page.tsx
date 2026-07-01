@@ -2,7 +2,7 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#1a1a2e]">
+    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden bg-[#1a1a2e]">
       {/* Subtle scanline overlay */}
       <div
         className="pointer-events-none absolute inset-0 z-10 opacity-[0.03]"
