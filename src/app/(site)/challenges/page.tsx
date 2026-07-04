@@ -1,22 +1,22 @@
 import type { Metadata } from "next";
 import PageHeader from "@/components/page-header";
 import ChallengeGrid from "@/components/challenge-grid";
-import { categories } from "@/lib/challenges";
+import { apps, totalChallenges, totalMaxPoints } from "@/lib/apps";
 
 export const metadata: Metadata = {
   title: "Challenges · OWASP CTF @ DEF CON 34",
-  description: "Challenge categories for the OWASP CTF: web, pwn, crypto, forensics, reverse engineering, and OSINT.",
+  description: "Six vulnerable OWASP apps to patch: Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI.",
 };
 
 export default function ChallengesPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        eyebrow="Categories"
+        eyebrow="Targets"
         title="Challenges"
-        description="Challenges span six categories and three difficulty tiers. Points scale with difficulty, and harder solves are worth more as fewer teams crack them. Filter by tier to find a starting point."
+        description={`${totalChallenges} challenges across six vulnerable apps, worth ${totalMaxPoints} points total. Points scale with difficulty — patch the regression test tied to each challenge to score it.`}
       />
-      <ChallengeGrid categories={categories} />
+      <ChallengeGrid apps={apps} />
     </div>
   );
 }

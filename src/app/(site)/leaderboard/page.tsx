@@ -1,28 +1,46 @@
-// Server Component: loads scoreboard data on the server, then renders the
-// interactive <Leaderboard> client component with it. Data in, interactivity
-// down — the split the App Router is built around.
+// Server Component: loads scoreboard data + the viewer's session on the
+// server, then renders the interactive <Leaderboard> client component with
+// both. Data (and auth) in, interactivity down.
 
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import PageHeader from "@/components/page-header";
 import Leaderboard from "@/components/leaderboard";
-import { getLeaderboard } from "@/lib/leaderboard";
+import { getLeaderboardSource } from "@/lib/leaderboard/source";
+import { formatRelativeTime } from "@/lib/relative-time";
+import { auth } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Leaderboard · OWASP CTF @ DEF CON 34",
-  description: "Live team standings for the OWASP Capture The Flag at DEF CON 34.",
+  description: "Live contestant standings for the OWASP Capture The Flag at DEF CON 34.",
 };
 
 export default async function LeaderboardPage() {
-  const teams = await getLeaderboard();
+  const source = getLeaderboardSource();
+  const [data, session] = await Promise.all([
+    source.getLeaderboard(),
+    auth.api.getSession({ headers: await headers() }),
+  ]);
+
+  // Pre-format relative times server-side so client and server render
+  // identical markup (see src/lib/relative-time.ts).
+  const generatedAtMs = Date.parse(data.generatedAt);
+  const entries = data.entries.map((entry) => ({
+    ...entry,
+    updatedAgo: entry.updatedAt ? formatRelativeTime(entry.updatedAt, generatedAtMs) : undefined,
+  }));
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         eyebrow="Standings"
         title="Leaderboard"
-        description="Live team rankings. Filter by division, sort by score or solves, and expand any team to see how their points break down by category."
+        description="Live contestant rankings from patched PRs. Sign in with GitHub to highlight your own row and unlock your profile."
       />
-      <Leaderboard teams={teams} />
+      <Leaderboard
+        data={{ ...data, entries }}
+        viewerLogin={session?.user?.login ?? null}
+      />
     </div>
   );
 }

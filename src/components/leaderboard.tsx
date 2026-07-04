@@ -2,19 +2,18 @@
 
 // Interactive leaderboard.
 //
-// This is a Client Component (note the "use client" directive above) because
-// everything here needs the browser: useState for the query/filter/sort, and
-// onClick to expand a row. The server page loads the data and hands it down as
-// the `teams` prop — data fetching stays on the server, interactivity on the
-// client.
+// This is a Client Component because everything here needs the browser:
+// useState for the query/view/sort/expand state. The server page loads the
+// data (and the viewer's session) and hands both down as props — data
+// fetching and auth stay on the server, interactivity on the client.
 
 import { useMemo, useState } from "react";
-import type { Division, Team } from "@/lib/leaderboard";
+import Image from "next/image";
+import { apps as appList } from "@/lib/apps";
+import type { LeaderboardData, LeaderboardEntry, TeamStanding } from "@/lib/leaderboard/types";
 
-type RankedTeam = Team & { rank: number };
-type SortKey = "rank" | "score" | "solves";
-
-const DIVISIONS: (Division | "All")[] = ["All", "Open", "Pro", "Students"];
+type View = "individual" | "teams";
+type SortKey = "rank" | "points" | "patched";
 
 // Podium accents for the top three, drawn from the design tokens.
 const PODIUM: Record<number, string> = {
@@ -23,29 +22,268 @@ const PODIUM: Record<number, string> = {
   3: "#14b8a6", // teal-bronze
 };
 
-export default function Leaderboard({ teams }: { teams: RankedTeam[] }) {
+function Avatar({ login, size = 32 }: { login: string; size?: number }) {
+  return (
+    <Image
+      src={`https://avatars.githubusercontent.com/${login}`}
+      alt=""
+      width={size}
+      height={size}
+      className="flex-none rounded-full border border-white/10"
+      unoptimized
+    />
+  );
+}
+
+function RankChip({ rank }: { rank: number }) {
+  const podium = PODIUM[rank];
+  return (
+    <span
+      className="flex h-9 w-9 flex-none items-center justify-center rounded-md font-mono text-sm font-bold tabular-nums"
+      style={{
+        color: podium ?? "#71717a",
+        borderWidth: 1,
+        borderStyle: "solid",
+        borderColor: podium ? `${podium}66` : "rgba(255,255,255,0.08)",
+        background: podium ? `${podium}14` : "transparent",
+      }}
+    >
+      {rank}
+    </span>
+  );
+}
+
+function AppBreakdown({ entry }: { entry: LeaderboardEntry }) {
+  const attempted = appList.filter((app) => entry.apps[app.id]);
+  if (attempted.length === 0) {
+    return <p className="text-sm text-zinc-500">No app breakdown reported yet.</p>;
+  }
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {attempted.map((app) => {
+        const progress = entry.apps[app.id]!;
+        const pct = progress.total > 0 ? (progress.patched / progress.total) * 100 : 0;
+        return (
+          <div key={app.id} className="rounded-md border border-white/[0.06] bg-[#12121e] px-3 py-2">
+            <p className="text-xs" style={{ color: app.accent }}>
+              {app.name}
+            </p>
+            <p className="font-mono text-sm tabular-nums text-white">
+              {progress.patched}
+              <span className="ml-1 text-xs text-zinc-500">/ {progress.total} patched</span>
+            </p>
+            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+              <div className="h-full rounded-full" style={{ width: `${pct}%`, background: app.accent }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function LegacyBreakdown({ entry }: { entry: LeaderboardEntry }) {
+  return (
+    <div className="flex flex-wrap items-center gap-4 text-sm text-zinc-400">
+      <span>
+        {entry.patched} patched / {entry.total} attempted
+      </span>
+      {entry.lastPr != null && <span>PR #{entry.lastPr}</span>}
+      {entry.lastSha && <span className="font-mono text-xs text-zinc-500">{entry.lastSha.slice(0, 7)}</span>}
+    </div>
+  );
+}
+
+function EntryRow({
+  entry,
+  topPoints,
+  isOwn,
+  isOpen,
+  onToggle,
+  capabilities,
+}: {
+  entry: LeaderboardEntry;
+  topPoints: number;
+  isOwn: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  capabilities: LeaderboardData["capabilities"];
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className={`ds-card group w-full rounded-lg border bg-[#16162a] p-4 text-left transition-all hover:border-[#2563eb]/40 hover:bg-[#1a1a30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb] ${
+          isOwn ? "border-[#2563eb]/60" : "border-white/[0.06]"
+        }`}
+      >
+        <div className="flex items-center gap-4">
+          <RankChip rank={entry.rank} />
+          <Avatar login={entry.login} />
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="truncate font-mono font-medium text-white">{entry.login}</span>
+              {entry.team && (
+                <span className="flex-none rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
+                  {entry.team}
+                </span>
+              )}
+              {isOwn && (
+                <span className="flex-none rounded border border-[#2563eb]/50 bg-[#2563eb]/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[#2563eb]">
+                  you
+                </span>
+              )}
+            </div>
+            <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#2563eb] to-[#14b8a6]"
+                style={{ width: `${topPoints > 0 ? (entry.points / topPoints) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-none items-center gap-5 text-right">
+            <div>
+              <p className="font-mono text-base font-bold tabular-nums text-white">
+                {entry.points.toLocaleString()}
+              </p>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-500">pts</p>
+            </div>
+            <div className="hidden sm:block">
+              <p className="font-mono text-base tabular-nums text-[#22c55e]">{entry.patched}</p>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-500">patched</p>
+            </div>
+            <div className="hidden sm:block">
+              <p className="font-mono text-base tabular-nums text-[#e53e3e]">{entry.failed}</p>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-500">failed</p>
+            </div>
+            <svg
+              className={`text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+        </div>
+
+        {isOpen && (
+          <div className="mt-4 border-t border-white/[0.06] pt-4">
+            <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
+              <span className="uppercase tracking-wider">
+                {capabilities.apps ? "App breakdown" : "Summary"}
+              </span>
+              {entry.updatedAgo && <span>Last update {entry.updatedAgo}</span>}
+            </div>
+            {capabilities.apps ? <AppBreakdown entry={entry} /> : <LegacyBreakdown entry={entry} />}
+          </div>
+        )}
+      </button>
+    </li>
+  );
+}
+
+function TeamRow({ team, topPoints, isOpen, onToggle }: { team: TeamStanding; topPoints: number; isOpen: boolean; onToggle: () => void }) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className="ds-card group w-full rounded-lg border border-white/[0.06] bg-[#16162a] p-4 text-left transition-all hover:border-[#2563eb]/40 hover:bg-[#1a1a30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+      >
+        <div className="flex items-center gap-4">
+          <RankChip rank={team.rank} />
+          <div className="min-w-0 flex-1">
+            <span className="truncate font-medium text-white">{team.name}</span>
+            <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#2563eb] to-[#14b8a6]"
+                style={{ width: `${topPoints > 0 ? (team.points / topPoints) * 100 : 0}%` }}
+              />
+            </div>
+          </div>
+          <div className="flex flex-none items-center gap-5 text-right">
+            <div>
+              <p className="font-mono text-base font-bold tabular-nums text-white">
+                {team.points.toLocaleString()}
+              </p>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-500">pts</p>
+            </div>
+            <div className="hidden sm:block">
+              <p className="font-mono text-base tabular-nums text-zinc-300">{team.members.length}</p>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-500">members</p>
+            </div>
+            <svg
+              className={`text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
+        </div>
+        {isOpen && (
+          <div className="mt-4 flex flex-wrap gap-2 border-t border-white/[0.06] pt-4">
+            {team.members.map((login) => (
+              <span
+                key={login}
+                className="flex items-center gap-1.5 rounded-full border border-white/10 bg-[#12121e] py-1 pl-1 pr-2.5 text-xs text-zinc-300"
+              >
+                <Avatar login={login} size={18} />
+                {login}
+              </span>
+            ))}
+          </div>
+        )}
+      </button>
+    </li>
+  );
+}
+
+export default function Leaderboard({
+  data,
+  viewerLogin,
+}: {
+  data: LeaderboardData;
+  viewerLogin: string | null;
+}) {
   const [query, setQuery] = useState("");
-  const [division, setDivision] = useState<(typeof DIVISIONS)[number]>("All");
+  const [view, setView] = useState<View>("individual");
   const [sort, setSort] = useState<SortKey>("rank");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Leader score drives the relative width of each team's score bar.
-  const topScore = useMemo(
-    () => teams.reduce((max, t) => Math.max(max, t.score), 0),
-    [teams],
+  const topPoints = useMemo(
+    () => data.entries.reduce((max, e) => Math.max(max, e.points), 0),
+    [data.entries],
+  );
+  const topTeamPoints = useMemo(
+    () => data.teams.reduce((max, t) => Math.max(max, t.points), 0),
+    [data.teams],
   );
 
-  const visible = useMemo(() => {
+  const visibleEntries = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return teams
-      .filter((t) => (division === "All" ? true : t.division === division))
-      .filter((t) => (q === "" ? true : t.name.toLowerCase().includes(q)))
+    return data.entries
+      .filter((e) => (q === "" ? true : e.login.toLowerCase().includes(q) || e.team?.toLowerCase().includes(q)))
       .sort((a, b) => {
         if (sort === "rank") return a.rank - b.rank;
-        if (sort === "score") return b.score - a.score;
-        return b.solves - a.solves;
+        if (sort === "points") return b.points - a.points;
+        return b.patched - a.patched;
       });
-  }, [teams, query, division, sort]);
+  }, [data.entries, query, sort]);
+
+  const visibleTeams = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return data.teams
+      .filter((t) => (q === "" ? true : t.name.toLowerCase().includes(q) || t.slug.toLowerCase().includes(q)))
+      .sort((a, b) => a.rank - b.rank);
+  }, [data.teams, query]);
+
+  const showTeamsToggle = data.capabilities.teams && data.teams.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -63,151 +301,94 @@ export default function Leaderboard({ teams }: { teams: RankedTeam[] }) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search teams…"
-            aria-label="Search teams"
+            placeholder={view === "individual" ? "Search contestants…" : "Search teams…"}
+            aria-label="Search leaderboard"
             className="w-full rounded-md border border-white/10 bg-white/[0.03] py-2 pl-9 pr-3 text-sm text-white placeholder:text-zinc-500 focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {DIVISIONS.map((d) => (
+        {showTeamsToggle && (
+          <div className="flex flex-wrap items-center gap-2">
+            {(["individual", "teams"] as View[]).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                aria-pressed={view === v}
+                className={`rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb] ${
+                  view === v
+                    ? "border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb]"
+                    : "border-white/10 text-zinc-400 hover:text-white"
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {view === "individual" && (
+        <div className="flex items-center gap-4 px-1 text-xs uppercase tracking-wider text-zinc-500">
+          <span>Sort:</span>
+          {(["rank", "points", "patched"] as SortKey[]).map((key) => (
             <button
-              key={d}
+              key={key}
               type="button"
-              onClick={() => setDivision(d)}
-              aria-pressed={division === d}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb] ${
-                division === d
-                  ? "border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb]"
-                  : "border-white/10 text-zinc-400 hover:text-white"
+              onClick={() => setSort(key)}
+              className={`transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb] ${
+                sort === key ? "text-[#14b8a6]" : "hover:text-zinc-300"
               }`}
             >
-              {d}
+              {key}
             </button>
           ))}
         </div>
-      </div>
+      )}
 
-      {/* Sort header */}
-      <div className="flex items-center gap-4 px-1 text-xs uppercase tracking-wider text-zinc-500">
-        <span>Sort:</span>
-        {(["rank", "score", "solves"] as SortKey[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setSort(key)}
-            className={`transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb] ${
-              sort === key ? "text-[#14b8a6]" : "hover:text-zinc-300"
-            }`}
-          >
-            {key}
-          </button>
-        ))}
-      </div>
-
-      {/* Cards */}
-      {visible.length === 0 ? (
+      {view === "individual" ? (
+        visibleEntries.length === 0 ? (
+          <p className="rounded-lg border border-white/[0.06] bg-[#16162a] px-5 py-8 text-center text-sm text-zinc-500">
+            No contestants match <span className="text-zinc-300">&ldquo;{query}&rdquo;</span>.
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {visibleEntries.map((entry) => (
+              <EntryRow
+                key={entry.login}
+                entry={entry}
+                topPoints={topPoints}
+                isOwn={viewerLogin === entry.login}
+                isOpen={expanded === entry.login}
+                onToggle={() => setExpanded(expanded === entry.login ? null : entry.login)}
+                capabilities={data.capabilities}
+              />
+            ))}
+          </ul>
+        )
+      ) : visibleTeams.length === 0 ? (
         <p className="rounded-lg border border-white/[0.06] bg-[#16162a] px-5 py-8 text-center text-sm text-zinc-500">
           No teams match <span className="text-zinc-300">&ldquo;{query}&rdquo;</span>.
         </p>
       ) : (
         <ul className="flex flex-col gap-2.5">
-          {visible.map((team) => {
-            const isOpen = expanded === team.name;
-            const podium = PODIUM[team.rank];
-            return (
-              <li key={team.name}>
-                <button
-                  type="button"
-                  onClick={() => setExpanded(isOpen ? null : team.name)}
-                  aria-expanded={isOpen}
-                  className="ds-card group w-full rounded-lg border border-white/[0.06] bg-[#16162a] p-4 text-left transition-all hover:border-[#2563eb]/40 hover:bg-[#1a1a30] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
-                >
-                  <div className="flex items-center gap-4">
-                    {/* Rank */}
-                    <span
-                      className="flex h-9 w-9 flex-none items-center justify-center rounded-md font-mono text-sm font-bold tabular-nums"
-                      style={{
-                        color: podium ?? "#71717a",
-                        borderWidth: 1,
-                        borderStyle: "solid",
-                        borderColor: podium ? `${podium}66` : "rgba(255,255,255,0.08)",
-                        background: podium ? `${podium}14` : "transparent",
-                      }}
-                    >
-                      {team.rank}
-                    </span>
-
-                    {/* Name + division + bar */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium text-white">{team.name}</span>
-                        <span className="flex-none rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
-                          {team.division}
-                        </span>
-                      </div>
-                      <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-[#2563eb] to-[#14b8a6]"
-                          style={{ width: `${(team.score / topScore) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="flex flex-none items-center gap-5 text-right">
-                      <div>
-                        <p className="font-mono text-base font-bold tabular-nums text-white">
-                          {team.score.toLocaleString()}
-                        </p>
-                        <p className="text-[11px] uppercase tracking-wide text-zinc-500">pts</p>
-                      </div>
-                      <div className="hidden sm:block">
-                        <p className="font-mono text-base tabular-nums text-zinc-300">{team.solves}</p>
-                        <p className="text-[11px] uppercase tracking-wide text-zinc-500">solves</p>
-                      </div>
-                      <svg
-                        className={`text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                        width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                        aria-hidden="true"
-                      >
-                        <path d="m6 9 6 6 6-6" />
-                      </svg>
-                    </div>
-                  </div>
-
-                  {/* Expanded detail */}
-                  {isOpen && (
-                    <div className="mt-4 border-t border-white/[0.06] pt-4">
-                      <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
-                        <span className="uppercase tracking-wider">Category breakdown</span>
-                        <span>Last solve {team.lastSolve}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        {team.breakdown.map((cat) => (
-                          <div
-                            key={cat.category}
-                            className="rounded-md border border-white/[0.06] bg-[#12121e] px-3 py-2"
-                          >
-                            <p className="text-xs text-zinc-400">{cat.category}</p>
-                            <p className="font-mono text-sm tabular-nums text-white">
-                              {cat.points.toLocaleString()}
-                              <span className="ml-1 text-xs text-zinc-500">/ {cat.solves} solved</span>
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </button>
-              </li>
-            );
-          })}
+          {visibleTeams.map((team) => (
+            <TeamRow
+              key={team.slug}
+              team={team}
+              topPoints={topTeamPoints}
+              isOpen={expanded === team.slug}
+              onToggle={() => setExpanded(expanded === team.slug ? null : team.slug)}
+            />
+          ))}
         </ul>
       )}
 
       <p className="px-1 text-xs text-zinc-600">
-        Showing {visible.length} of {teams.length} teams · click a row for the category breakdown
+        {view === "individual"
+          ? `Showing ${visibleEntries.length} of ${data.entries.length} contestants`
+          : `Showing ${visibleTeams.length} of ${data.teams.length} teams`}
+        {" · click a row for the breakdown"}
       </p>
     </div>
   );
