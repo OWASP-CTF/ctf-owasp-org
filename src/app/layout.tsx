@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Poppins, Barlow, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import SiteHeader from "@/components/site-header";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -37,9 +38,10 @@ export default function RootLayout({
       className={`${poppins.variable} ${barlow.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-      {children}
-      <Analytics />
-    </body>
+        <SiteHeader />
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }

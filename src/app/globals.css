@@ -56,3 +56,23 @@ h1, h2, h3, h4, h5, h6 {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
 }
+
+/* Shared hover treatment for interactive cards (leaderboard rows, challenge
+   tiles, FAQ items). The glow picks up each card's --accent when one is set,
+   falling back to the brand blue. */
+.ds-card:hover {
+  box-shadow:
+    0 8px 30px -14px color-mix(in srgb, var(--accent, #2563eb) 45%, transparent);
+}
+
+/* Respect users who ask for less motion: neutralize the looping hero
+   animations and shorten transitions instead of removing them outright. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
