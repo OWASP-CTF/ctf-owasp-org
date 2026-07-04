@@ -6,7 +6,8 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import PageHeader from "@/components/page-header";
 import Leaderboard from "@/components/leaderboard";
-import { getLeaderboardSource } from "@/lib/leaderboard/source";
+import MockDataNotice from "@/components/mock-data-notice";
+import { getLeaderboardSource, getLeaderboardSourceMode } from "@/lib/leaderboard/source";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { auth } from "@/lib/auth";
 
@@ -37,6 +38,7 @@ export default async function LeaderboardPage() {
         title="Leaderboard"
         description="Live contestant rankings from patched PRs. Sign in with GitHub to highlight your own row and unlock your profile."
       />
+      {getLeaderboardSourceMode() === "mock" && <MockDataNotice />}
       <Leaderboard
         data={{ ...data, entries }}
         viewerLogin={session?.user?.login ?? null}

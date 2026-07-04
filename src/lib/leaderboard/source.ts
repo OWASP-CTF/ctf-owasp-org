@@ -17,15 +17,20 @@ export interface LeaderboardSource {
  *  - "upstash" — direct read of the CURRENT real Upstash schema (read-only
  *                token) — aggregates only, no teams, no per-app breakdown.
  */
+export type LeaderboardSourceMode = "mock" | "lambda" | "upstash";
+
+export function getLeaderboardSourceMode(): LeaderboardSourceMode {
+  const mode = process.env.LEADERBOARD_SOURCE;
+  return mode === "lambda" || mode === "upstash" ? mode : "mock";
+}
+
 export function getLeaderboardSource(): LeaderboardSource {
-  const mode = process.env.LEADERBOARD_SOURCE ?? "mock";
-  switch (mode) {
+  switch (getLeaderboardSourceMode()) {
     case "lambda":
       return lambdaSource;
     case "upstash":
       return upstashSource;
     case "mock":
-    default:
       return mockSource;
   }
 }

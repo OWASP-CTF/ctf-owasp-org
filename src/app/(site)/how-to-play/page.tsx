@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PageHeader from "@/components/page-header";
-import { event } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "How to Play · OWASP CTF @ DEF CON 34",
-  description: "Step-by-step guide to competing in the OWASP CTF: register, join the scoreboard, find flags, and submit.",
+  description: "Step-by-step guide to the OWASP secure development CTF: fork a target, patch a real vulnerability, open a PR, and get scored automatically.",
 };
 
 const steps = [
@@ -14,24 +13,24 @@ const steps = [
     body: "This is an in-person competition at the Las Vegas Convention Center. A valid DEF CON 34 badge gets you into the OWASP CTF area.",
   },
   {
-    title: "Register on the scoreboard",
-    body: "Create an account on the CTFd scoreboard platform. You'll register your team there and submit every flag through it.",
+    title: "Sign in with GitHub",
+    body: "Use the sign-in button in the header. Your GitHub login is how the leaderboard and your profile track your progress — it's the same identity you'll submit pull requests from.",
   },
   {
-    title: "Form your team (1–4 players)",
-    body: "Compete solo or with up to three teammates. One person creates the team and shares the invite; everyone submits under the same team.",
+    title: "Pick a target and a challenge",
+    body: "Browse the six vulnerable apps on the Challenges page — Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI. Each has dozens of independent challenges at different difficulty levels; pick any one to start.",
   },
   {
-    title: "Pick a challenge",
-    body: "Browse challenges by category and difficulty. Beginner challenges are worth fewer points but are the fastest way onto the board — start there if you're new.",
+    title: "Find the vulnerability",
+    body: "Work the target like a real audit: read the source, exercise the app, and identify the OWASP Top 10 flaw behind the challenge. Using AI tools to help analyze and remediate is part of the intended workflow — use them if it helps.",
   },
   {
-    title: "Find the flag",
-    body: "Each challenge hides a flag. Solve the puzzle — exploit the web app, reverse the binary, break the cipher — until you recover it.",
+    title: "Patch it and open a pull request",
+    body: "Fork the target's repo, fix the vulnerability in your fork, and open a PR against that challenge's branch. This is secure development practice, not flag hunting — the fix itself is the deliverable.",
   },
   {
-    title: "Submit it",
-    body: "Paste the flag into the challenge on the scoreboard. A correct flag locks in the points instantly and updates your rank.",
+    title: "Get scored automatically",
+    body: "A GitHub Action runs the challenge's regression test against your patched app. A passing test scores the challenge's points immediately — no manual grading, no waiting on an organizer.",
   },
 ];
 
@@ -41,18 +40,20 @@ export default function HowToPlayPage() {
       <PageHeader
         eyebrow="Getting Started"
         title="How to Play"
-        description="New to capture the flag? Here's everything you need to go from a DEF CON badge to your first solve on the board."
+        description="New to the competition? Here's everything you need to go from a DEF CON badge to your first patched challenge."
       />
 
-      {/* Flag format callout */}
+      {/* Workflow callout */}
       <div className="rounded-lg border border-[#2563eb]/30 bg-[#2563eb]/[0.06] p-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-[#2563eb]">Flag format</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-[#2563eb]">The loop</p>
         <p className="mt-2 font-mono text-sm text-zinc-300">
-          Every flag looks like{" "}
-          <span className="rounded bg-[#12121e] px-2 py-1 text-[#22c55e]">OWASP&#123;y0u_found_me&#125;</span>
+          find the flaw <span className="text-zinc-600">→</span> patch it{" "}
+          <span className="text-zinc-600">→</span> open a PR{" "}
+          <span className="text-zinc-600">→</span> CI scores it
         </p>
         <p className="mt-2 text-sm text-zinc-400">
-          Submit it exactly as found, including the <code className="font-mono text-zinc-300">OWASP&#123;&#125;</code> wrapper. Flags are case-sensitive.
+          There are no flags to submit. Every challenge is scored by an automated regression test
+          that only passes once the vulnerability is actually fixed.
         </p>
       </div>
 
@@ -78,7 +79,11 @@ export default function HowToPlayPage() {
       <div className="flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#16162a] p-5">
         <h3 className="font-semibold text-white">How scoring works</h3>
         <p className="text-sm leading-relaxed text-zinc-400">
-          Challenges use <span className="text-zinc-200">dynamic scoring</span>: every challenge starts at its maximum value, and the points drop as more teams solve it. The earliest solves of the hardest challenges are worth the most. Ties are broken by who reached the score first, so a fast solve beats a late one.
+          Every challenge is worth a fixed number of points based on difficulty — harder
+          vulnerabilities pay out more. Points are awarded the moment your PR&rsquo;s regression
+          test passes, and your best-ever result for each challenge is what counts, so a later
+          fix always replaces an earlier miss. Your live total, per-app breakdown, and
+          patched/failed counts are visible on your profile once you&rsquo;re signed in.
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
           <Link
@@ -93,14 +98,12 @@ export default function HowToPlayPage() {
           >
             Read the rules
           </Link>
-          <a
-            href={event.ctfdUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <Link
+            href="/leaderboard"
             className="rounded-md border border-white/10 px-4 py-2 text-sm text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
           >
-            Open the scoreboard ↗
-          </a>
+            View the leaderboard
+          </Link>
         </div>
       </div>
     </div>

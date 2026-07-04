@@ -31,7 +31,13 @@ export const auth = betterAuth({
   },
   user: {
     additionalFields: {
-      login: { type: "string", required: false, input: false },
+      // `input: true` (the default) is required here: better-auth silently
+      // drops provider-mapped values for any field marked `input: false`
+      // during OAuth sign-in (it treats that flag as "server-owned, ignore
+      // client/provider-supplied values"), which left session.user.login
+      // undefined and broke the /profile gate. There's no email/password
+      // provider registered, so nothing else can set this field.
+      login: { type: "string", required: false },
     },
   },
   plugins: [nextCookies()], // keep last

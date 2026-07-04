@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 
-export type QA = { q: string; a: string };
+export type QA = { q: string; a: React.ReactNode };
 
 export default function FaqAccordion({ items }: { items: QA[] }) {
   const [open, setOpen] = useState<number | null>(0);

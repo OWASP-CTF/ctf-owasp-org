@@ -3,25 +3,25 @@ import PageHeader from "@/components/page-header";
 
 export const metadata: Metadata = {
   title: "Rules · OWASP CTF @ DEF CON 34",
-  description: "Competition rules and code of conduct for the OWASP CTF at DEF CON 34.",
+  description: "Competition rules and code of conduct for the OWASP secure development CTF at DEF CON 34.",
 };
 
 const sections: { heading: string; rules: string[] }[] = [
   {
     heading: "Teams",
     rules: [
-      "Teams may have 1 to 4 members. Solo players are welcome.",
-      "Each person competes on exactly one team. No switching teams mid-event.",
-      "Register your team on the scoreboard before submitting your first flag.",
+      "You can compete solo or as a team of up to four — teams are optional, and you can join or create one from your profile after signing in with GitHub.",
+      "Each person belongs to at most one team at a time.",
+      "Your GitHub login is your identity for scoring. Submit every pull request from the account you signed in with.",
     ],
   },
   {
     heading: "Fair play",
     rules: [
-      "Do not attack the scoreboard, competition infrastructure, or other teams' machines. Only the challenge targets are in scope.",
-      "Do not share flags, solutions, or hints with other teams during the competition.",
-      "Do not brute-force flag submissions. Excessive automated guessing will be rate-limited or disqualified.",
-      "Automated scanning of out-of-scope hosts is prohibited.",
+      "Only the six challenge targets (Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, VAmPI) are in scope. Do not attack the CI scoring pipeline, the leaderboard, or other contestants' forks.",
+      "Submit your own work. Don't publish full solutions or patches for others to copy during the event.",
+      "Automated mass-submission or spamming pull requests to farm scoring runs will get your account rate-limited or disqualified.",
+      "Using AI tools to help find and patch vulnerabilities is encouraged — it's part of the intended workflow, not a shortcut against the rules.",
     ],
   },
   {
@@ -29,15 +29,15 @@ const sections: { heading: string; rules: string[] }[] = [
     rules: [
       "The DEF CON Code of Conduct applies at all times. Harassment of any kind ends your event.",
       "Be excellent to the volunteers, organizers, and your fellow competitors.",
-      "Found a bug in a challenge or the platform? Report it to an organizer — don't exploit it for an unfair edge.",
+      "Found a bug in a challenge, the scorer, or the site itself? Report it to an organizer — don't exploit it for an unfair edge.",
     ],
   },
   {
     heading: "Scoring & prizes",
     rules: [
-      "Challenges use dynamic scoring; point values fall as more teams solve them.",
-      "Ties are broken by the timestamp the score was reached — earlier wins.",
-      "Prizes are awarded to the top three teams overall, plus category standouts. Winners must be present to claim.",
+      "Each challenge is worth a fixed point value based on difficulty. Points post the moment your PR's regression test passes.",
+      "Your best-ever result per challenge counts — a later successful patch always replaces an earlier miss.",
+      "Prizes are awarded to the top individuals and top teams overall. Winners must be present to claim.",
       "Organizer decisions on scoring disputes are final.",
     ],
   },
