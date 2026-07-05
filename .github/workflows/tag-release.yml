@@ -1,0 +1,54 @@
+name: Tag Release
+
+# Tags and publishes a GitHub Release whenever package.json's version is
+# bumped on main. Bump the version as part of your PR; merging to main does
+# the rest. No-op if a tag for the current version already exists.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tag-release
+  cancel-in-progress: false
+
+jobs:
+  tag-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Read version from package.json
+        id: version
+        run: |
+          VALUE=$(node -p "require('./package.json').version")
+          echo "value=$VALUE" >> "$GITHUB_OUTPUT"
+
+      - name: Check if tag already exists
+        id: check
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          if git rev-parse "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create tag and GitHub Release
+        if: steps.check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@2bb465e97f322d3cb2a965294d483e0d26a67aa9 # v3.0.1
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: v${{ steps.version.outputs.value }}
+          generate_release_notes: true
+          target_commitish: ${{ github.sha }}
