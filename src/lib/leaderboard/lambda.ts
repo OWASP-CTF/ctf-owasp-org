@@ -3,27 +3,29 @@ import type { AppId } from "@/lib/apps";
 import type { LeaderboardSource } from "./source";
 import type { LeaderboardData, LeaderboardEntry, UserProfile } from "./types";
 
-// Shape returned by the currently-deployed Lambda's mock endpoint:
-// { leaderboard: [{ rank, author, points, apps: { "juice-shop": 6, ... } }] }
-// "apps" here is a pass-count per target, not points — there is no per-app
-// point/max/patched/total breakdown and no team concept in this source.
-type LambdaEntry = { rank: number; author: string; points: number; apps: Partial<Record<AppId, number>> };
+// Shape returned by the deployed Lambda's real scoring endpoint:
+// { leaderboard: [{ rank, author, points, apps: { "juice-shop": { solved, total }, ... } }] }
+// There is no per-app point/max breakdown and no team concept in this source.
+type LambdaAppProgress = { solved: number; total: number };
+type LambdaEntry = { rank: number; author: string; points: number; apps: Partial<Record<AppId, LambdaAppProgress>> };
 type LambdaResponse = { leaderboard: LambdaEntry[] };
 
 function toEntry(raw: LambdaEntry): LeaderboardEntry {
   const apps: LeaderboardEntry["apps"] = {};
+  let patched = 0;
   let total = 0;
-  for (const [app, passed] of Object.entries(raw.apps) as [AppId, number][]) {
-    total += passed;
-    apps[app] = { app, points: 0, maxPoints: 0, patched: passed, total: passed };
+  for (const [app, progress] of Object.entries(raw.apps) as [AppId, LambdaAppProgress][]) {
+    patched += progress.solved;
+    total += progress.total;
+    apps[app] = { app, points: 0, maxPoints: 0, patched: progress.solved, total: progress.total };
   }
   return {
     rank: raw.rank,
     login: raw.author,
     team: null,
     points: raw.points,
-    patched: total,
-    failed: 0,
+    patched,
+    failed: total - patched,
     total,
     apps,
     updatedAt: null,
@@ -34,10 +36,7 @@ export const lambdaSource: LeaderboardSource = {
   async getLeaderboard(): Promise<LeaderboardData> {
     const base = process.env.LEADERBOARD_API_URL;
     if (!base) throw new Error("LEADERBOARD_API_URL is not set");
-    // The deployed Lambda's real scoring path isn't implemented yet — without
-    // `mock=1` it returns `{ leaderboard: [] }`. Drop this param once the
-    // backend (see PR-B) actually populates data from Upstash.
-    const res = await fetch(`${base.replace(/\/$/, "")}/leaderboard?mock=1&breakdown=1`, {
+    const res = await fetch(`${base.replace(/\/$/, "")}/leaderboard`, {
       next: { revalidate: 30 },
     });
     if (!res.ok) throw new Error(`Lambda leaderboard fetch failed: HTTP ${res.status}`);
