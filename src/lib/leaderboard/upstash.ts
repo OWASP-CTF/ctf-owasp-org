@@ -7,25 +7,10 @@ import type { LeaderboardData, LeaderboardEntry, UserProfile } from "./types";
 //   ZADD leaderboard <score> <login>          (one global ZSET — latest write wins)
 //   HSET team:<login> score maxScore patched total sha pr updatedAt
 // No per-app breakdown, no per-challenge data, no real teams exist yet in
-// this schema — capabilities reflect that. Plain fetch to the REST /pipeline
-// endpoint mirrors the scorer's own zero-dependency approach; the read-only
-// token is sufficient since this adapter never writes.
+// this schema — capabilities reflect that. This adapter never writes; the
+// shared REST /pipeline client lives in @/lib/upstash.
 
-type PipelineResult = { result: unknown };
-
-async function pipeline(commands: (string | number)[][]): Promise<PipelineResult[]> {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) throw new Error("UPSTASH_REDIS_REST_URL/TOKEN are not set");
-  const res = await fetch(`${url.replace(/\/$/, "")}/pipeline`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(commands),
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`Upstash pipeline failed: HTTP ${res.status}`);
-  return (await res.json()) as PipelineResult[];
-}
+import { upstashPipeline as pipeline } from "@/lib/upstash";
 
 function hgetallToObject(flat: unknown): Record<string, string> {
   const arr = Array.isArray(flat) ? (flat as string[]) : [];

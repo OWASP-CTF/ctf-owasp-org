@@ -14,7 +14,7 @@ import TeamCard from "@/components/team-card";
 import { appsById } from "@/lib/apps";
 import { auth } from "@/lib/auth";
 import { getLeaderboardSource } from "@/lib/leaderboard/source";
-import { getMockTeamOverride, TEAM_WRITES_ENABLED } from "@/lib/team-store";
+import { getViewerTeam, TEAM_MAX_MEMBERS, TEAM_WRITES_ENABLED } from "@/lib/team-store";
 
 export const metadata: Metadata = {
   title: "Profile · OWASP CTF @ DEF CON 34",
@@ -28,14 +28,27 @@ export default async function ProfilePage() {
   const login = (session.user as { login?: string }).login;
   if (!login) redirect("/");
 
-  const [profile, mockTeamOverride] = await Promise.all([
+  const [profile, storeTeam] = await Promise.all([
     getLeaderboardSource().getUser(login),
-    getMockTeamOverride(),
+    getViewerTeam(login),
   ]);
 
-  const effectiveTeam = mockTeamOverride ?? profile?.team ?? null;
+  // Live/mock team membership from the store wins; fall back to whatever the
+  // leaderboard source reports (only the mock fixture populates it today).
+  const team =
+    storeTeam ??
+    (profile?.team ? { slug: profile.team, name: profile.teamName ?? profile.team, members: [] } : null);
+  const effectiveTeam = team?.slug ?? null;
   const remaining = profile ? Math.max(0, profile.total - profile.patched - profile.failed) : 0;
-  const progressPct = profile && profile.maxPoints > 0 ? (profile.points / profile.maxPoints) * 100 : 0;
+  // Sources without per-challenge point data (lambda/upstash) report
+  // maxPoints 0 — fall back to patched/total so the bar still means something.
+  const progressPct = !profile
+    ? 0
+    : profile.maxPoints > 0
+      ? (profile.points / profile.maxPoints) * 100
+      : profile.total > 0
+        ? (profile.patched / profile.total) * 100
+        : 0;
 
   return (
     <div className="flex flex-col gap-8">
@@ -86,7 +99,7 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      <TeamCard team={effectiveTeam} writesEnabled={TEAM_WRITES_ENABLED} />
+      <TeamCard team={team} writesEnabled={TEAM_WRITES_ENABLED} maxMembers={TEAM_MAX_MEMBERS} />
 
       {!profile || profile.apps.length === 0 ? (
         <div className="ds-card rounded-lg border border-white/[0.06] bg-[#16162a] px-5 py-10 text-center">
@@ -105,10 +118,16 @@ export default async function ProfilePage() {
                   <p className="font-medium" style={{ color: meta.accent }}>
                     {meta.name}
                   </p>
-                  <p className="font-mono text-sm text-zinc-400">
-                    {app.points}
-                    <span className="text-zinc-600"> / {app.maxPoints} pts</span>
-                  </p>
+                  {/* Sources without per-app point data (lambda) report
+                      maxPoints 0 — showing "0 / 0 pts" reads as broken, so
+                      only render the stat when it exists. The patched/total
+                      line below covers progress either way. */}
+                  {app.maxPoints > 0 && (
+                    <p className="font-mono text-sm text-zinc-400">
+                      {app.points}
+                      <span className="text-zinc-600"> / {app.maxPoints} pts</span>
+                    </p>
+                  )}
                 </div>
                 <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
                   <div

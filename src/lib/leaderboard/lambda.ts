@@ -25,7 +25,10 @@ function toEntry(raw: LambdaEntry): LeaderboardEntry {
     team: null,
     points: raw.points,
     patched,
-    failed: total - patched,
+    // The Lambda only reports solved/total — unsolved challenges are
+    // "remaining", not "failed" (there is no failing-test-run data in this
+    // source), so failed is always 0 and the UI derives remaining instead.
+    failed: 0,
     total,
     apps,
     updatedAt: null,
