@@ -12,8 +12,8 @@ export interface LeaderboardSource {
 /**
  * `LEADERBOARD_SOURCE` switches the backend without touching any UI code:
  *  - "mock"    (default) — local fixture shaped like the proposed v2 API.
- *  - "lambda"  — the deployed Lambda's `GET /leaderboard?breakdown=1` (current
- *                mock data; aggregate points per app, no per-challenge detail).
+ *  - "lambda"  — the deployed Lambda's `GET /leaderboard` (live scoring;
+ *                per-app solved/total, no per-challenge or point breakdown).
  *  - "upstash" — direct read of the CURRENT real Upstash schema (read-only
  *                token) — aggregates only, no teams, no per-app breakdown.
  */

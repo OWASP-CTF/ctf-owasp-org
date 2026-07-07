@@ -1,11 +1,13 @@
 "use client";
 
-// Team join/create/leave control on the profile page. Currently backed by a
-// per-browser mock cookie (see src/lib/team-store.ts) — fully demoable, but
-// not shared across contestants until a write-enabled Upstash token exists.
+// Team join/create/leave control on the profile page. All writes go through
+// the /api/team route handlers, which authenticate the session and enforce
+// the team-size cap server-side (see src/lib/team-store.ts) — this component
+// is display + dispatch only.
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { TeamInfo } from "@/lib/team-store";
 
 async function postTeam(path: string, body?: Record<string, string>) {
   const res = await fetch(`/api/team${path}`, {
@@ -20,9 +22,11 @@ async function postTeam(path: string, body?: Record<string, string>) {
 export default function TeamCard({
   team,
   writesEnabled,
+  maxMembers,
 }: {
-  team: string | null;
+  team: TeamInfo | null;
   writesEnabled: boolean;
+  maxMembers: number;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -56,16 +60,38 @@ export default function TeamCard({
       </div>
 
       {team ? (
-        <div className="mt-3 flex items-center justify-between">
-          <p className="font-mono text-white">{team}</p>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => run(() => postTeam("/leave"))}
-            className="rounded-md border border-white/10 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:border-[#e53e3e]/50 hover:text-white disabled:opacity-50"
-          >
-            Leave team
-          </button>
+        <div className="mt-3 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="truncate font-mono text-white">{team.name}</p>
+              {team.slug !== team.name && (
+                <p className="truncate text-xs text-zinc-500">slug: {team.slug}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => run(() => postTeam("/leave"))}
+              className="flex-none rounded-md border border-white/10 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:border-[#e53e3e]/50 hover:text-white disabled:opacity-50"
+            >
+              Leave team
+            </button>
+          </div>
+          {team.members.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              {team.members.map((member) => (
+                <span
+                  key={member}
+                  className="rounded-full border border-white/10 bg-[#12121e] px-2.5 py-1 font-mono text-xs text-zinc-300"
+                >
+                  {member}
+                </span>
+              ))}
+              <span className="text-xs text-zinc-500">
+                {team.members.length} / {maxMembers} players
+              </span>
+            </div>
+          )}
         </div>
       ) : (
         <div className="mt-3 flex flex-col gap-2">
