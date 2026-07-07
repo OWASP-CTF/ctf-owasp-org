@@ -187,6 +187,43 @@ describe("getViewerTeam", () => {
   });
 });
 
+describe("listTeams", () => {
+  it("walks the SCAN cursor and resolves each team's name and members", async () => {
+    const store = await loadStore(true);
+    mocks.upstashPipeline
+      // Two SCAN pages, then one HGET+SMEMBERS pair per team.
+      .mockResolvedValueOnce([{ result: ["7", ["ctf:team:red:members"]] }])
+      .mockResolvedValueOnce([{ result: ["0", ["ctf:team:blue:members"]] }])
+      .mockResolvedValueOnce([
+        { result: "Red Team" },
+        { result: ["zed", "abe"] },
+        { result: null },
+        { result: ["solo"] },
+      ]);
+    const teams = await store.listTeams();
+    expect(teams).toEqual([
+      { slug: "red", name: "Red Team", members: ["abe", "zed"] },
+      { slug: "blue", name: "blue", members: ["solo"] }, // name falls back to slug
+    ]);
+    const scanCalls = mocks.upstashPipeline.mock.calls.slice(0, 2).map(([cmds]) => cmds[0]);
+    expect(scanCalls[0]).toEqual(["SCAN", "0", "MATCH", "ctf:team:*:members", "COUNT", "1000"]);
+    expect(scanCalls[1][1]).toBe("7");
+  });
+
+  it("returns [] without touching Upstash when writes are disabled", async () => {
+    const store = await loadStore(false);
+    expect(await store.listTeams()).toEqual([]);
+    expect(mocks.upstashPipeline).not.toHaveBeenCalled();
+  });
+
+  it("returns [] when no team keys exist", async () => {
+    const store = await loadStore(true);
+    mocks.upstashPipeline.mockResolvedValueOnce([{ result: ["0", []] }]);
+    expect(await store.listTeams()).toEqual([]);
+    expect(mocks.upstashPipeline).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("mock mode (TEAM_WRITES_ENABLED unset)", () => {
   it("persists to the per-browser cookie and never touches Upstash", async () => {
     const store = await loadStore(false);

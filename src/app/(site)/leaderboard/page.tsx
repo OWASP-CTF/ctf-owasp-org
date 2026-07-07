@@ -8,6 +8,7 @@ import PageHeader from "@/components/page-header";
 import Leaderboard from "@/components/leaderboard";
 import MockDataNotice from "@/components/mock-data-notice";
 import { getLeaderboardSource, getLeaderboardSourceMode } from "@/lib/leaderboard/source";
+import { withTeamStandings } from "@/lib/leaderboard/team-standings";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { auth } from "@/lib/auth";
 
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 export default async function LeaderboardPage() {
   const source = getLeaderboardSource();
   const [data, session] = await Promise.all([
-    source.getLeaderboard(),
+    source.getLeaderboard().then(withTeamStandings),
     auth.api.getSession({ headers: await headers() }),
   ]);
 

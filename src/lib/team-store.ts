@@ -130,6 +130,41 @@ export async function leaveTeam(login: string): Promise<TeamActionResult> {
   return { ok: true, team: null };
 }
 
+/** Every team with its members, for the public standings. Live mode only —
+ *  the cookie mock is per-browser and has no cross-player view, so this
+ *  returns [] when writes are disabled. */
+export async function listTeams(): Promise<TeamInfo[]> {
+  if (!TEAM_WRITES_ENABLED) return [];
+
+  const prefix = "ctf:team:";
+  const suffix = ":members";
+  const slugs: string[] = [];
+  let cursor = "0";
+  do {
+    const [scan] = await upstashPipeline([["SCAN", cursor, "MATCH", `${prefix}*${suffix}`, "COUNT", "1000"]]);
+    const [next, keys] = Array.isArray(scan.result) ? (scan.result as [string, string[]]) : ["0", []];
+    cursor = next;
+    for (const key of keys) slugs.push(key.slice(prefix.length, -suffix.length));
+  } while (cursor !== "0");
+  if (slugs.length === 0) return [];
+
+  const results = await upstashPipeline(
+    slugs.flatMap((slug) => [
+      ["HGET", teamKey(slug), "name"],
+      ["SMEMBERS", membersKey(slug)],
+    ]),
+  );
+  return slugs.map((slug, i) => {
+    const nameRes = results[i * 2]?.result;
+    const membersRes = results[i * 2 + 1]?.result;
+    return {
+      slug,
+      name: typeof nameRes === "string" && nameRes ? nameRes : slug,
+      members: Array.isArray(membersRes) ? [...(membersRes as string[])].sort() : [],
+    };
+  });
+}
+
 /** The viewer's team as shown on the profile: live Upstash membership when
  *  writes are enabled, otherwise the per-browser mock cookie. */
 export async function getViewerTeam(login: string): Promise<TeamInfo | null> {
