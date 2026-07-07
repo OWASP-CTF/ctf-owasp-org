@@ -6,14 +6,14 @@ Contestants patch real vulnerabilities in six deliberately-insecure OWASP traini
 
 ## Status
 
-Pre-event. Core site, GitHub sign-in, leaderboard, profile, and team UI are built. The leaderboard currently renders illustrative mock data — it switches to live contestant results once the CTF backend is wired up and the event starts (see the countdown on the homepage and the notice on `/leaderboard`).
+Pre-event, backend wired up. Core site, GitHub sign-in, leaderboard, profile, and teams are built. Production reads live scoring data from the Lambda (`LEADERBOARD_SOURCE=lambda`) and team membership persists to Upstash Redis when `TEAM_WRITES_ENABLED=true`; without those env vars everything falls back to mock data so the site stays fully demoable with zero backend.
 
 ## Features
 
 - **GitHub sign-in** ([better-auth](https://www.better-auth.com/)) — contestants authenticate with the same GitHub account they open pull requests from.
 - **Leaderboard** (`/leaderboard`) — public standings; sign in to highlight your own row. Backed by a swappable data-source adapter (see below).
-- **Profile** (`/profile`) — gated per-challenge progress across all six target apps.
-- **Teams** — join, create, or leave a team (currently backed by a per-browser cookie; real persistence lands with the production backend).
+- **Profile** (`/profile`) — gated per-app progress across all six target apps.
+- **Teams** — join, create, or leave a team of up to **4 players**. Writes go to Upstash Redis and are entirely server-side (see below); without `TEAM_WRITES_ENABLED` they fall back to a per-browser cookie mock (flagged with a "mock mode" badge).
 - **Six real targets** — Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI, covering the OWASP Web and API Top 10.
 
 ## Tech Stack
@@ -45,8 +45,10 @@ Copy `.env.example` to `.env.local` and fill in real values — none of these sh
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth app credentials — create one under the org's GitHub settings with callback `<BETTER_AUTH_URL>/api/auth/callback/github` |
 | `LEADERBOARD_SOURCE` | No | `mock` (default) \| `lambda` \| `upstash` — selects the leaderboard data adapter |
 | `LEADERBOARD_API_URL` | Only if `LEADERBOARD_SOURCE=lambda` | Base URL of the scoring Lambda |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Only if `LEADERBOARD_SOURCE=upstash` | Upstash Redis REST credentials (read-only token is sufficient for reads) |
-| `TEAM_WRITES_ENABLED` | No | Enables real team-write persistence once a backend is available; unset uses the per-browser cookie mock |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Only if `LEADERBOARD_SOURCE=upstash` or `TEAM_WRITES_ENABLED=true` | Upstash Redis REST credentials (leaderboard reads work with a read-only token; team writes need a **read/write** token) |
+| `TEAM_WRITES_ENABLED` | No | `true` persists team join/create/leave to Upstash Redis; unset uses the per-browser cookie mock |
+
+> Env var changes on Vercel only take effect on the **next deployment** — redeploy after adding or changing one.
 
 ## Scripts
 
@@ -56,6 +58,7 @@ Copy `.env.example` to `.env.local` and fill in real values — none of these sh
 | `pnpm build` | Production build |
 | `pnpm start` | Serve production build |
 | `pnpm lint` | Run ESLint |
+| `pnpm test` | Run the vitest suite (team-store unit tests; the live-Upstash integration tests auto-skip without `UPSTASH_REDIS_REST_*` credentials) |
 
 ## Project Structure
 
@@ -81,7 +84,9 @@ src/
     apps.ts                   # Metadata for the six target apps
     site.ts                   # Event dates, nav links
     leaderboard/               # Data-source adapters (mock/lambda/upstash) + types
-    team-store.ts              # Team read/write abstraction
+    upstash.ts                 # Shared Upstash Redis REST client (pipeline + EVAL)
+    team-store.ts              # Team reads/writes (Upstash or cookie mock)
+    __tests__/                 # vitest: team rules (unit + live-Upstash integration)
 public/
   owasp-logo.png              # OWASP logo (rendered inverted on dark backgrounds)
 ```
@@ -91,8 +96,28 @@ public/
 `LEADERBOARD_SOURCE` swaps the backend without touching any UI code:
 
 - **`mock`** (default) — local fixture shaped like the target production API. Used everywhere until the real backend is ready.
-- **`lambda`** — reads the deployed scoring Lambda's `/leaderboard` endpoint.
+- **`lambda`** — reads the deployed scoring Lambda's `/leaderboard` endpoint (per-app solved/total; unsolved challenges count as *remaining*, not *failed*).
 - **`upstash`** — reads directly from Upstash Redis via its REST API.
+
+## Teams
+
+Team membership lives in Upstash Redis when `TEAM_WRITES_ENABLED=true`. All writes are server-side only: the `/api/team*` route handlers derive the player's GitHub login from the better-auth session, and the only client input (team name/slug) is slugified and length-capped before touching Redis — nothing client-side can forge identity or bypass the rules.
+
+Rules, enforced atomically (each mutation is a single Lua `EVAL`, so they can't be raced):
+
+- **Max 4 players per team** — the fifth join is rejected with "team is full".
+- **One team per player** — joining or creating while already on a team is rejected until you leave.
+- Duplicate team slugs are rejected; joining a nonexistent team is rejected; a team's keys are deleted when its last member leaves.
+
+Schema:
+
+```
+HSET ctf:team:<slug> name <name> captain <login> createdAt <iso>
+SADD ctf:team:<slug>:members <login>     # capped at 4
+HSET ctf:user:<login> team <slug>
+```
+
+These rules are covered by `pnpm test` — unit tests with Upstash mocked, plus an integration suite that runs the real Lua scripts against live Upstash using throwaway keys.
 
 ## Branding
 
