@@ -157,8 +157,10 @@ function EntryRow({
               <p className="text-[11px] uppercase tracking-wide text-zinc-500">patched</p>
             </div>
             <div className="hidden sm:block">
-              <p className="font-mono text-base tabular-nums text-[#e53e3e]">{entry.failed}</p>
-              <p className="text-[11px] uppercase tracking-wide text-zinc-500">failed</p>
+              <p className="font-mono text-base tabular-nums text-zinc-300">
+                {Math.max(0, entry.total - entry.patched)}
+              </p>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-500">non-patched</p>
             </div>
             <svg
               className={`text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`}

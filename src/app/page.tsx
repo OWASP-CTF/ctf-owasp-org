@@ -227,8 +227,8 @@ export default function Home() {
           <div className="max-w-xl">
             <h3 className="text-lg font-semibold text-white">Track your progress live</h3>
             <p className="mt-1 text-sm leading-relaxed text-zinc-400">
-              Sign in with GitHub to claim your row on the leaderboard, follow your patched/failed
-              count per app on your profile, and team up with other contestants.
+              Sign in with GitHub to claim your row on the leaderboard, follow your patched and
+              non-patched count per app on your profile, and team up with other contestants.
             </p>
           </div>
           <div className="flex flex-none flex-wrap gap-3">
