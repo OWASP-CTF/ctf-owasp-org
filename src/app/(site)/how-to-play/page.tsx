@@ -14,7 +14,7 @@ const steps = [
   },
   {
     title: "Sign in with GitHub",
-    body: "Use the sign-in button in the header. Your GitHub login is how the leaderboard and your profile track your progress — it's the same identity you'll submit pull requests from.",
+    body: "Use the sign-in button in the header. Your GitHub login is how the leaderboard and your profile track your progress — the scorer credits points to the account that authors the pull request, so play from the same account you sign in with.",
   },
   {
     title: "Pick a target and a challenge",
@@ -26,13 +26,87 @@ const steps = [
   },
   {
     title: "Patch it and open a pull request",
-    body: "Fork the target's repo, fix the vulnerability in your fork, and open a PR against that challenge's branch. This is secure development practice, not flag hunting — the fix itself is the deliverable.",
+    body: "Fork the target's repo under the OWASP-CTF org, fix the vulnerability on a branch in your fork, and open a PR back against the repo's dc34-ctf branch. This is secure development practice, not flag hunting — the fix itself is the deliverable.",
   },
   {
     title: "Get scored automatically",
-    body: "A GitHub Action runs the challenge's regression test against your patched app. A passing test scores the challenge's points immediately — no manual grading, no waiting on an organizer.",
+    body: "A GitHub Action builds your patched app and runs the full regression suite against it. Every passing challenge test scores its points immediately — no manual grading, no waiting on an organizer. Pushing more fixes to the same PR re-scores it.",
   },
 ];
+
+// Worked example: the Login Admin SQL injection in the Juice Shop fork. The
+// before/after mirrors routes/login.ts on the dc34-ctf branch and the
+// canonical parameterized-query fix, so a contestant who follows this
+// verbatim genuinely scores (and closes the two sibling login challenges).
+const walkthrough: { title: string; body: string; code?: string; lang?: "shell" | "ts" }[] = [
+  {
+    title: "Fork the target and clone your fork",
+    body: "Fork OWASP-CTF/juice-shop on GitHub (or with the gh CLI), then clone it. The default branch, dc34-ctf, is the one the scorer watches.",
+    lang: "shell",
+    code: `gh repo fork OWASP-CTF/juice-shop --clone
+cd juice-shop`,
+  },
+  {
+    title: "Create a branch for your fix",
+    body: "One branch per fix keeps your PRs clean and easy to re-score.",
+    lang: "shell",
+    code: "git checkout -b fix/login-sql-injection",
+  },
+  {
+    title: "Find the flaw",
+    body: "The Login Admin challenge (A05: Injection) lives in routes/login.ts — user input is concatenated straight into the SQL string, so an email like ' OR 1=1-- logs in as the first user in the table: the admin.",
+    lang: "ts",
+    code: `// routes/login.ts — the vulnerable query
+models.sequelize.query(
+  \`SELECT * FROM Users WHERE email = '\${req.body.email || ''}'
+    AND password = '\${security.hash(req.body.password || '')}'
+    AND deletedAt IS NULL\`,
+  { model: UserModel, plain: true }
+)`,
+  },
+  {
+    title: "Patch it",
+    body: "Replace string interpolation with bind parameters. The database driver now treats the email and password strictly as data — they can never rewrite the query itself.",
+    lang: "ts",
+    code: `// routes/login.ts — parameterized fix
+models.sequelize.query(
+  'SELECT * FROM Users WHERE email = $1 AND password = $2 AND deletedAt IS NULL',
+  {
+    model: UserModel,
+    plain: true,
+    bind: [req.body.email || '', security.hash(req.body.password || '')]
+  }
+)`,
+  },
+  {
+    title: "Commit and push to your fork",
+    body: "Write the commit message like you would on a real security fix — say what was vulnerable and how the patch closes it.",
+    lang: "shell",
+    code: `git add routes/login.ts
+git commit -m "Fix SQL injection in login route with bind parameters"
+git push -u origin fix/login-sql-injection`,
+  },
+  {
+    title: "Open the PR against dc34-ctf",
+    body: "The base repo is OWASP-CTF/juice-shop and the base branch is dc34-ctf — the scorer only watches that branch. The GitHub web UI's “Compare & pull request” button works too; just check the base branch.",
+    lang: "shell",
+    code: `gh pr create --repo OWASP-CTF/juice-shop --base dc34-ctf \\
+  --title "Fix SQL injection in login route" \\
+  --body "Replaced string-interpolated SQL with bind parameters."`,
+  },
+  {
+    title: "Watch the scorer do its thing",
+    body: "The ctf-score Action builds your patched app, boots it in a sandbox, and runs the challenge regression suite against it. When it finishes you'll get a “🏁 Score recorded” comment on the PR, and your points appear on the leaderboard and your profile moments later.",
+  },
+];
+
+function CodeBlock({ code }: { code: string }) {
+  return (
+    <pre className="mt-3 overflow-x-auto rounded-md border border-white/10 bg-[#0e0e1a] p-3 font-mono text-xs leading-relaxed text-zinc-300">
+      {code}
+    </pre>
+  );
+}
 
 export default function HowToPlayPage() {
   return (
@@ -74,6 +148,75 @@ export default function HowToPlayPage() {
           </li>
         ))}
       </ol>
+
+      {/* Worked example */}
+      <section className="flex flex-col gap-5" aria-labelledby="first-patch">
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-medium uppercase tracking-[0.25em] text-[#14b8a6]">
+            Worked example
+          </p>
+          <h2 id="first-patch" className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            Your first patch, end to end
+          </h2>
+          <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">
+            Here&rsquo;s the whole loop on a real challenge: <span className="text-zinc-200">Login Admin</span> in
+            Juice Shop, a classic SQL injection. Follow it verbatim to land your first points and
+            see exactly what a scoring run looks like — then repeat the pattern on every other
+            challenge.
+          </p>
+        </div>
+
+        <ol className="flex flex-col gap-4">
+          {walkthrough.map((step, i) => (
+            <li
+              key={step.title}
+              className="rounded-lg border border-white/[0.06] bg-[#16162a] p-5"
+            >
+              <div className="flex gap-4">
+                <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-[#14b8a6]/40 bg-[#14b8a6]/10 font-mono text-sm font-bold tabular-nums text-[#14b8a6]">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-white">{step.title}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-400">{step.body}</p>
+                  {step.code && <CodeBlock code={step.code} />}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        <div className="rounded-lg border border-[#14b8a6]/30 bg-[#14b8a6]/[0.06] p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-[#14b8a6]">Bonus</p>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+            That one-line fix doesn&rsquo;t just close Login Admin — the same injection powers the{" "}
+            <span className="text-zinc-200">Login Bender</span> and{" "}
+            <span className="text-zinc-200">Login Jim</span> challenges, so a single parameterized
+            query scores all three. Real fixes often cascade like this: patch the root cause, not
+            the symptom.
+          </p>
+        </div>
+      </section>
+
+      {/* Good-to-know */}
+      <div className="flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#16162a] p-5">
+        <h3 className="font-semibold text-white">Good to know</h3>
+        <ul className="flex list-disc flex-col gap-2 pl-5 text-sm leading-relaxed text-zinc-400">
+          <li>
+            Every push to an open PR re-runs the scorer, and the run evaluates your whole app — so
+            you can keep stacking fixes on one branch or open a fresh PR per fix, whichever you
+            prefer.
+          </li>
+          <li>
+            Your best-ever result per challenge is what counts. A later fix always replaces an
+            earlier miss; you can never lose points by trying.
+          </li>
+          <li>
+            Points are credited to the GitHub account that authored the PR — team totals are the
+            sum of what each member lands individually.
+          </li>
+        </ul>
+      </div>
 
       {/* Scoring note */}
       <div className="flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#16162a] p-5">
