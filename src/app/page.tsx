@@ -16,7 +16,7 @@ const STEPS = [
   },
   {
     title: "Patch it and open a PR",
-    body: "Fix the vulnerability in your fork, then submit a pull request against the challenge branch. This is secure development, not flag hunting.",
+    body: "Fix the vulnerability in your fork, then submit a pull request against the repo's dc34-ctf branch. This is secure development, not flag hunting.",
   },
   {
     title: "Get scored automatically",
