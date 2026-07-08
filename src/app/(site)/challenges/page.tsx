@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 
 export default async function ChallengesPage() {
   const catalog = await getChallengeCatalog();
+  const sortedApps = [...apps].sort((a, b) => a.name.localeCompare(b.name));
 
   const description = catalog
     ? `${catalog.total} challenges across six vulnerable apps, each tagged with its OWASP Top 10 category. Points scale with difficulty — patch the regression test tied to each challenge to score it.`
@@ -19,7 +20,7 @@ export default async function ChallengesPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader eyebrow="Targets" title="Challenges" description={description} />
-      <ChallengeGrid apps={apps} catalog={catalog?.byApp ?? null} />
+      <ChallengeGrid apps={sortedApps} catalog={catalog?.byApp ?? null} />
     </div>
   );
 }
