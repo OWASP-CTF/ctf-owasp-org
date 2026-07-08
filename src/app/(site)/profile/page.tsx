@@ -39,7 +39,10 @@ export default async function ProfilePage() {
     storeTeam ??
     (profile?.team ? { slug: profile.team, name: profile.teamName ?? profile.team, members: [] } : null);
   const effectiveTeam = team?.slug ?? null;
-  const remaining = profile ? Math.max(0, profile.total - profile.patched - profile.failed) : 0;
+  // "Non-patched" = everything not yet fixed (failed runs + untouched
+  // challenges) — deliberately not called "failed" so contestants who
+  // haven't gotten to a challenge yet don't read it as losing.
+  const nonPatched = profile ? Math.max(0, profile.total - profile.patched) : 0;
   // Sources without per-challenge point data (lambda/upstash) report
   // maxPoints 0 — fall back to patched/total so the bar still means something.
   const progressPct = !profile
@@ -89,12 +92,12 @@ export default async function ProfilePage() {
             <p className="text-[11px] uppercase tracking-wide text-zinc-500">patched</p>
           </div>
           <div>
-            <p className="font-mono text-xl tabular-nums text-[#e53e3e]">{profile?.failed ?? 0}</p>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">failed</p>
+            <p className="font-mono text-xl tabular-nums text-zinc-300">{nonPatched}</p>
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500">non-patched</p>
           </div>
           <div>
-            <p className="font-mono text-xl tabular-nums text-zinc-400">{remaining}</p>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">remaining</p>
+            <p className="font-mono text-xl tabular-nums text-zinc-400">{profile?.total ?? 0}</p>
+            <p className="text-[11px] uppercase tracking-wide text-zinc-500">total</p>
           </div>
         </div>
       </div>

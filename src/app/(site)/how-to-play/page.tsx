@@ -83,7 +83,7 @@ export default function HowToPlayPage() {
           vulnerabilities pay out more. Points are awarded the moment your PR&rsquo;s regression
           test passes, and your best-ever result for each challenge is what counts, so a later
           fix always replaces an earlier miss. Your live total, per-app breakdown, and
-          patched/failed counts are visible on your profile once you&rsquo;re signed in.
+          patched and non-patched counts are visible on your profile once you&rsquo;re signed in.
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
           <Link
