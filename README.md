@@ -44,7 +44,7 @@ Copy `.env.example` to `.env.local` and fill in real values — none of these sh
 | `BETTER_AUTH_URL` | Yes | Base URL of the app (e.g. `http://localhost:3000`) |
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth app credentials — create one under the org's GitHub settings with callback `<BETTER_AUTH_URL>/api/auth/callback/github` |
 | `LEADERBOARD_SOURCE` | No | `mock` (default) \| `lambda` \| `upstash` — selects the leaderboard data adapter |
-| `LEADERBOARD_API_URL` | Only if `LEADERBOARD_SOURCE=lambda` | Base URL of the scoring Lambda |
+| `LEADERBOARD_API_URL` | Only if `LEADERBOARD_SOURCE=lambda` | Base URL of the scoring API — serves `/leaderboard` (used by the lambda source) and `/challenges` (live challenge catalogue on the challenges page; without it the page shows static fallback cards) |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Only if `LEADERBOARD_SOURCE=upstash` or `TEAM_WRITES_ENABLED=true` | Upstash Redis REST credentials (leaderboard reads work with a read-only token; team writes need a **read/write** token) |
 | `TEAM_WRITES_ENABLED` | No | `true` persists team join/create/leave to Upstash Redis; unset uses the per-browser cookie mock |
 
@@ -81,7 +81,8 @@ src/
                                # event countdown, challenge lists, etc.
   lib/
     auth.ts / auth-client.ts  # better-auth server + client config
-    apps.ts                   # Metadata for the six target apps
+    apps.ts                   # Metadata for the six target apps (static fallback counts)
+    challenges.ts              # Live challenge catalogue from the scoring API
     site.ts                   # Event dates, nav links
     leaderboard/               # Data-source adapters (mock/lambda/upstash) + types
     upstash.ts                 # Shared Upstash Redis REST client (pipeline + EVAL)

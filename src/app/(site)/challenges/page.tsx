@@ -2,21 +2,24 @@ import type { Metadata } from "next";
 import PageHeader from "@/components/page-header";
 import ChallengeGrid from "@/components/challenge-grid";
 import { apps, totalChallenges, totalMaxPoints } from "@/lib/apps";
+import { getChallengeCatalog } from "@/lib/challenges";
 
 export const metadata: Metadata = {
   title: "Challenges · OWASP CTF @ DEF CON 34",
   description: "Six vulnerable OWASP apps to patch: Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI.",
 };
 
-export default function ChallengesPage() {
+export default async function ChallengesPage() {
+  const catalog = await getChallengeCatalog();
+
+  const description = catalog
+    ? `${catalog.total} challenges across six vulnerable apps, each tagged with its OWASP Top 10 category. Points scale with difficulty — patch the regression test tied to each challenge to score it.`
+    : `${totalChallenges} challenges across six vulnerable apps, worth ${totalMaxPoints} points total. Points scale with difficulty — patch the regression test tied to each challenge to score it.`;
+
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        eyebrow="Targets"
-        title="Challenges"
-        description={`${totalChallenges} challenges across six vulnerable apps, worth ${totalMaxPoints} points total. Points scale with difficulty — patch the regression test tied to each challenge to score it.`}
-      />
-      <ChallengeGrid apps={apps} />
+      <PageHeader eyebrow="Targets" title="Challenges" description={description} />
+      <ChallengeGrid apps={apps} catalog={catalog?.byApp ?? null} />
     </div>
   );
 }
