@@ -3,6 +3,7 @@ import Link from "next/link";
 import EventCountdown from "@/components/event-countdown";
 import SiteFooter from "@/components/site-footer";
 import { apps, totalChallenges, totalMaxPoints } from "@/lib/apps";
+import { getChallengeCatalog } from "@/lib/challenges";
 import { event } from "@/lib/site";
 
 const STEPS = [
@@ -24,7 +25,8 @@ const STEPS = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const catalog = await getChallengeCatalog();
   return (
     <div className="flex flex-1 flex-col">
       <div className="relative flex flex-col items-center justify-center overflow-hidden bg-[#1a1a2e] py-20">
@@ -184,7 +186,9 @@ export default function Home() {
               Six real targets
             </p>
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              {totalChallenges} challenges, {totalMaxPoints} points up for grabs
+              {catalog
+                ? `${catalog.total} challenges up for grabs`
+                : `${totalChallenges} challenges, ${totalMaxPoints} points up for grabs`}
             </h2>
             <p className="max-w-2xl text-base leading-relaxed text-zinc-400">
               Each app is a well-known, deliberately vulnerable OWASP project. Points scale with
@@ -211,7 +215,7 @@ export default function Home() {
                       </svg>
                     </span>
                     <span className="font-mono text-xs tabular-nums text-zinc-500">
-                      {app.challengeCount} challenges
+                      {catalog?.byApp[app.id]?.length ?? app.challengeCount} challenges
                     </span>
                   </div>
                   <h3 className="text-lg font-semibold text-white">{app.name}</h3>
