@@ -27,6 +27,7 @@ const STEPS = [
 
 export default async function Home() {
   const catalog = await getChallengeCatalog();
+  const sortedApps = [...apps].sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div className="flex flex-1 flex-col">
       <div className="relative flex flex-col items-center justify-center overflow-hidden bg-[#1a1a2e] py-20">
@@ -198,7 +199,7 @@ export default async function Home() {
           </div>
 
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {apps.map((app) => (
+            {sortedApps.map((app) => (
               <li key={app.id}>
                 <Link
                   href="/challenges"
