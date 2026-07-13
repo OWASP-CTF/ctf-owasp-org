@@ -4,10 +4,19 @@
 // filter and per-card expand/collapse. When the live catalogue is available
 // each card lists its challenges with OWASP category links; without it the
 // cards fall back to the static counts/points from lib/apps.
+//
+// Hints layer: which challenges HAVE hints comes in as a server prop (public,
+// safe to bake into the static page); the viewer's own state (session, bought
+// hints) is loaded client-side from GET /api/hints after mount so per-user
+// data never ends up in the shared static render.
 
-import { useState } from "react";
-import type { AppMeta } from "@/lib/apps";
+import { useEffect, useState } from "react";
+import HintButton from "@/components/hint-button";
+import type { AppId, AppMeta } from "@/lib/apps";
 import type { CatalogChallenge, ChallengeCatalog } from "@/lib/challenges";
+import { authClient } from "@/lib/auth-client";
+
+type PurchasedHints = Partial<Record<AppId, Record<string, string>>>;
 
 type VisibleApp = {
   app: AppMeta;
@@ -29,12 +38,46 @@ function matchChallenge(c: CatalogChallenge, q: string): boolean {
 export default function ChallengeGrid({
   apps,
   catalog,
+  hints,
 }: {
   apps: AppMeta[];
   catalog: ChallengeCatalog["byApp"] | null;
+  /** Challenge ids that have a hint, per app ({} when hints are unavailable). */
+  hints: Partial<Record<AppId, string[]>>;
 }) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
+
+  const hintsActive = Object.keys(hints).length > 0;
+  // isPending renders the same signed-out teaser the static HTML has, so the
+  // signed-in upgrade happens after hydration with no markup mismatch.
+  const { data: session, isPending } = authClient.useSession();
+  const signedIn = hintsActive && !isPending && !!session;
+  const [purchased, setPurchased] = useState<PurchasedHints>({});
+  const [hintCost, setHintCost] = useState(10);
+  const [spent, setSpent] = useState(0);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    let cancelled = false;
+    fetch("/api/hints")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.enabled) return;
+        setPurchased(data.purchased ?? {});
+        setHintCost(Number(data.cost) || 10);
+        setSpent(Number(data.spent) || 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [signedIn]);
+
+  const onPurchased = (app: AppId, id: string, text: string, spentNow: number) => {
+    setPurchased((prev) => ({ ...prev, [app]: { ...(prev[app] ?? {}), [id]: text } }));
+    setSpent(spentNow);
+  };
 
   const visible = apps
     .map((app): VisibleApp | null => {
@@ -69,6 +112,12 @@ export default function ChallengeGrid({
           className="w-full rounded-md border border-white/10 bg-white/[0.03] py-2 pl-9 pr-3 text-sm text-white placeholder:text-zinc-500 focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
         />
       </div>
+
+      {spent > 0 && (
+        <p className="-mt-3 font-mono text-xs tabular-nums text-[#d4a017]/80">
+          💡 −{spent} pts spent on hints
+        </p>
+      )}
 
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {visible.map(({ app, count, challenges, forceOpen }) => (
@@ -108,7 +157,16 @@ export default function ChallengeGrid({
 
               {challenges ? (
                 <div className="border-t border-white/[0.06] pt-3">
-                  <CatalogList challenges={challenges} forceOpen={forceOpen} />
+                  <CatalogList
+                    challenges={challenges}
+                    forceOpen={forceOpen}
+                    app={app.id}
+                    hintIds={hints[app.id] ? new Set(hints[app.id]) : null}
+                    signedIn={signedIn}
+                    cost={hintCost}
+                    owned={purchased[app.id]}
+                    onPurchased={onPurchased}
+                  />
                 </div>
               ) : (
                 <div className="flex items-center justify-between border-t border-white/[0.06] pt-3 text-xs">
@@ -132,7 +190,27 @@ export default function ChallengeGrid({
   );
 }
 
-function CatalogList({ challenges, forceOpen }: { challenges: CatalogChallenge[]; forceOpen: boolean }) {
+function CatalogList({
+  challenges,
+  forceOpen,
+  app,
+  hintIds,
+  signedIn,
+  cost,
+  owned,
+  onPurchased,
+}: {
+  challenges: CatalogChallenge[];
+  forceOpen: boolean;
+  app: AppId;
+  /** Ids with a hint available; null = no hints for this app. */
+  hintIds: Set<string> | null;
+  signedIn: boolean;
+  cost: number;
+  /** The viewer's bought hints for this app (id → text). */
+  owned: Record<string, string> | undefined;
+  onPurchased: (app: AppId, id: string, text: string, spent: number) => void;
+}) {
   const [open, setOpen] = useState(false);
   const expanded = forceOpen || open;
 
@@ -158,22 +236,35 @@ function CatalogList({ challenges, forceOpen }: { challenges: CatalogChallenge[]
 
       {expanded && (
         <ul className="mt-2 flex max-h-64 flex-col gap-1 overflow-y-auto border-l border-white/[0.06] pl-3">
-          {challenges.map((c) => (
-            <li key={c.id} className="flex items-center gap-2 py-0.5 text-xs">
-              <span className="min-w-0 flex-1 truncate text-zinc-300" title={c.description}>
-                {c.description}
-              </span>
-              <a
-                href={c.owasp.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={c.owasp.label}
-                className="flex-none rounded border border-white/10 px-1 text-[10px] text-zinc-500 transition-colors hover:border-[#2563eb]/60 hover:text-white"
-              >
-                {c.owasp.code}
-              </a>
-            </li>
-          ))}
+          {challenges.map((c) => {
+            const ownedText = owned?.[c.id];
+            return (
+              <li key={c.id} className="flex flex-col gap-1 py-0.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-zinc-300" title={c.description}>
+                    {c.description}
+                  </span>
+                  {hintIds?.has(c.id) && !ownedText && (
+                    <HintButton app={app} id={c.id} cost={cost} signedIn={signedIn} onPurchased={onPurchased} />
+                  )}
+                  <a
+                    href={c.owasp.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={c.owasp.label}
+                    className="flex-none rounded border border-white/10 px-1 text-[10px] text-zinc-500 transition-colors hover:border-[#2563eb]/60 hover:text-white"
+                  >
+                    {c.owasp.code}
+                  </a>
+                </div>
+                {ownedText && (
+                  <p className="rounded border-l-2 border-[#d4a017]/50 bg-[#d4a017]/[0.06] px-2 py-1 text-[11px] leading-relaxed text-[#d4a017]/90">
+                    💡 {ownedText}
+                  </p>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
