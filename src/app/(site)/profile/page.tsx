@@ -13,6 +13,7 @@ import AppChallengeList from "@/components/app-challenge-list";
 import TeamCard from "@/components/team-card";
 import { appsById } from "@/lib/apps";
 import { auth } from "@/lib/auth";
+import { getViewerHints } from "@/lib/hint-store";
 import { getLeaderboardSource } from "@/lib/leaderboard/source";
 import { getViewerTeam, TEAM_MAX_MEMBERS, TEAM_WRITES_ENABLED } from "@/lib/team-store";
 
@@ -28,9 +29,10 @@ export default async function ProfilePage() {
   const login = (session.user as { login?: string }).login;
   if (!login) redirect("/");
 
-  const [profile, storeTeam] = await Promise.all([
+  const [profile, storeTeam, viewerHints] = await Promise.all([
     getLeaderboardSource().getUser(login),
     getViewerTeam(login),
+    getViewerHints(login),
   ]);
 
   // Live/mock team membership from the store wins; fall back to whatever the
@@ -43,12 +45,15 @@ export default async function ProfilePage() {
   // challenges) — deliberately not called "failed" so contestants who
   // haven't gotten to a challenge yet don't read it as losing.
   const nonPatched = profile ? Math.max(0, profile.total - profile.patched) : 0;
+  // Hint spend is deducted as an overlay (same math as the leaderboard's
+  // withHintPenalties) so the profile matches the contestant's public row.
+  const netPoints = Math.max(0, (profile?.points ?? 0) - viewerHints.spent);
   // Sources without per-challenge point data (lambda/upstash) report
   // maxPoints 0 — fall back to patched/total so the bar still means something.
   const progressPct = !profile
     ? 0
     : profile.maxPoints > 0
-      ? (profile.points / profile.maxPoints) * 100
+      ? (netPoints / profile.maxPoints) * 100
       : profile.total > 0
         ? (profile.patched / profile.total) * 100
         : 0;
@@ -84,9 +89,17 @@ export default async function ProfilePage() {
         </div>
         <div className="flex flex-none gap-6 text-right">
           <div>
-            <p className="font-mono text-xl font-bold tabular-nums text-white">{profile?.points ?? 0}</p>
+            <p className="font-mono text-xl font-bold tabular-nums text-white">{netPoints}</p>
             <p className="text-[11px] uppercase tracking-wide text-zinc-500">points</p>
           </div>
+          {viewerHints.count > 0 && (
+            <div>
+              <p className="font-mono text-xl tabular-nums text-[#d4a017]">−{viewerHints.spent}</p>
+              <p className="text-[11px] uppercase tracking-wide text-zinc-500">
+                hints ({viewerHints.count})
+              </p>
+            </div>
+          )}
           <div>
             <p className="font-mono text-xl tabular-nums text-[#22c55e]">{profile?.patched ?? 0}</p>
             <p className="text-[11px] uppercase tracking-wide text-zinc-500">patched</p>

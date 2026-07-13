@@ -3,6 +3,7 @@ import PageHeader from "@/components/page-header";
 import ChallengeGrid from "@/components/challenge-grid";
 import { apps, totalChallenges, totalMaxPoints } from "@/lib/apps";
 import { getChallengeCatalog } from "@/lib/challenges";
+import { getHintAvailability } from "@/lib/hint-store";
 
 export const metadata: Metadata = {
   title: "Challenges · OWASP CTF @ DEF CON 34",
@@ -10,7 +11,12 @@ export const metadata: Metadata = {
 };
 
 export default async function ChallengesPage() {
-  const catalog = await getChallengeCatalog();
+  // Both fetches are ISR-cached (revalidate 300) so this page stays static;
+  // hint availability is public (ids only, no hint text).
+  const [catalog, hintAvailability] = await Promise.all([
+    getChallengeCatalog(),
+    getHintAvailability(),
+  ]);
   const sortedApps = [...apps].sort((a, b) => a.name.localeCompare(b.name));
 
   const description = catalog
@@ -20,7 +26,7 @@ export default async function ChallengesPage() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader eyebrow="Targets" title="Challenges" description={description} />
-      <ChallengeGrid apps={sortedApps} catalog={catalog?.byApp ?? null} />
+      <ChallengeGrid apps={sortedApps} catalog={catalog?.byApp ?? null} hints={hintAvailability} />
     </div>
   );
 }

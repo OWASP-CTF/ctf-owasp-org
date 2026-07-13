@@ -14,6 +14,7 @@ Pre-event, backend wired up. Core site, GitHub sign-in, leaderboard, profile, an
 - **Leaderboard** (`/leaderboard`) — public standings; sign in to highlight your own row. Backed by a swappable data-source adapter (see below).
 - **Profile** (`/profile`) — gated per-app progress across all six target apps.
 - **Teams** — join, create, or leave a team of up to **4 players**. Writes go to Upstash Redis and are entirely server-side (see below); without `TEAM_WRITES_ENABLED` they fall back to a per-browser cookie mock (flagged with a "mock mode" badge).
+- **Paid hints** (`/challenges`) — signed-in contestants can reveal a hint for any challenge at a flat **−10 points**, deducted from their leaderboard score (see below). Signed-out visitors see a locked teaser.
 - **Six real targets** — Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI, covering the OWASP Web and API Top 10.
 
 ## Tech Stack
@@ -45,7 +46,7 @@ Copy `.env.example` to `.env.local` and fill in real values — none of these sh
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth app credentials — create one under the org's GitHub settings with callback `<BETTER_AUTH_URL>/api/auth/callback/github` |
 | `LEADERBOARD_SOURCE` | No | `mock` (default) \| `lambda` \| `upstash` — selects the leaderboard data adapter |
 | `LEADERBOARD_API_URL` | Only if `LEADERBOARD_SOURCE=lambda` | Base URL of the scoring API — serves `/leaderboard` (used by the lambda source) and `/challenges` (live challenge catalogue on the challenges page; without it the page shows static fallback cards) |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Only if `LEADERBOARD_SOURCE=upstash` or `TEAM_WRITES_ENABLED=true` | Upstash Redis REST credentials (leaderboard reads work with a read-only token; team writes need a **read/write** token) |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Only if `LEADERBOARD_SOURCE=upstash`, `TEAM_WRITES_ENABLED=true`, or hints are wanted | Upstash Redis REST credentials (leaderboard reads work with a read-only token; team writes and hint purchases need a **read/write** token). Setting these also auto-activates paid hints |
 | `TEAM_WRITES_ENABLED` | No | `true` persists team join/create/leave to Upstash Redis; unset uses the per-browser cookie mock |
 
 > Env var changes on Vercel only take effect on the **next deployment** — redeploy after adding or changing one.
@@ -77,6 +78,7 @@ src/
     api/
       auth/[...all]/            # better-auth route handler
       team/                     # Join/create/leave team routes
+      hints/                    # Viewer hint state + paid reveal routes
   components/                 # Site header/footer, leaderboard, team card,
                                # event countdown, challenge lists, etc.
   lib/
@@ -87,7 +89,8 @@ src/
     leaderboard/               # Data-source adapters (mock/lambda/upstash) + types
     upstash.ts                 # Shared Upstash Redis REST client (pipeline + EVAL)
     team-store.ts              # Team reads/writes (Upstash or cookie mock)
-    __tests__/                 # vitest: team rules (unit + live-Upstash integration)
+    hint-store.ts              # Paid hint purchases + penalty reads (Upstash)
+    __tests__/                 # vitest: team + hint rules (unit + live-Upstash integration)
 public/
   owasp-logo.png              # OWASP logo (rendered inverted on dark backgrounds)
 ```
@@ -119,6 +122,19 @@ HSET ctf:user:<login> team <slug>
 ```
 
 These rules are covered by `pnpm test` — unit tests with Upstash mocked, plus an integration suite that runs the real Lua scripts against live Upstash using throwaway keys.
+
+## Hints
+
+Hint text lives in the scorer-owned Upstash hashes `hints:<app>` (field = challenge catalogue id, value = hint text). When the `UPSTASH_REDIS_REST_*` vars are set, each challenge row on `/challenges` with a hint gets a reveal control: signed-out visitors see a locked teaser, signed-in contestants confirm and pay a flat **10 points** per hint. Re-viewing a bought hint is always free — charging is idempotent inside a single Lua `EVAL` (a double-click or race can't charge twice), and it's keyed by the server-derived session login, so nothing client-side can spend someone else's points.
+
+Purchases are recorded under the site's `ctf:` namespace, which the scorer never rewrites — penalties survive re-scores:
+
+```
+SADD ctf:user:<login>:hints "<app>/<challengeId>"   # what the user bought
+HINCRBY ctf:hints:spent <login> 10                  # running penalty total
+```
+
+The scorer's `leaderboard` ZSET is never decremented. Instead, displayed scores subtract the penalty as an overlay (`withHintPenalties`, floored at 0) applied **before** `withTeamStandings`, so leaderboard rows, team totals, and the profile all show the same net numbers. Penalized rows carry a small "−N hints" marker for transparency.
 
 ## Branding
 

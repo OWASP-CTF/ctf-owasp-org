@@ -151,6 +151,11 @@ function EntryRow({
                 {entry.points.toLocaleString()}
               </p>
               <p className="text-[11px] uppercase tracking-wide text-zinc-500">pts</p>
+              {entry.hintPenalty ? (
+                <p className="font-mono text-[10px] tabular-nums text-[#d4a017]/80" title="Points spent on hints (already deducted)">
+                  −{entry.hintPenalty} hints
+                </p>
+              ) : null}
             </div>
             <div className="hidden sm:block">
               <p className="font-mono text-base tabular-nums text-[#22c55e]">{entry.patched}</p>

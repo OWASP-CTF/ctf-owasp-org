@@ -43,6 +43,9 @@ export type LeaderboardEntry = {
   total: number;
   apps: Partial<Record<AppId, AppProgress>>;
   updatedAt: string | null;
+  /** Points already deducted for revealed hints (see leaderboard/
+   *  hint-penalties.ts). `points` is net — this is a transparency marker. */
+  hintPenalty?: number;
   /** Pre-formatted relative time ("4m ago"), filled in on the server so the
    *  client renders identical markup (no Date() hydration drift). */
   updatedAgo?: string;
