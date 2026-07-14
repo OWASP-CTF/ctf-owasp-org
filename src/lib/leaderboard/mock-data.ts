@@ -5,6 +5,7 @@
 // point at the real thing with no UI changes.
 
 import type { AppId } from "@/lib/apps";
+import { rankByStanding } from "./rank";
 import type { ChallengeResult, LeaderboardEntry, TeamStanding } from "./types";
 
 type Sample = {
@@ -181,22 +182,24 @@ function summarize(sample: Sample) {
 }
 
 export function buildMockEntries(): LeaderboardEntry[] {
-  return SAMPLES.map((sample) => {
-    const { points, patched, failed, total, apps } = summarize(sample);
-    return {
-      rank: 0, // assigned after sorting
-      login: sample.login,
-      team: sample.team,
-      points,
-      patched,
-      failed,
-      total,
-      apps,
-      updatedAt: sample.updatedAt,
-    };
-  })
-    .sort((a, b) => b.points - a.points)
-    .map((entry, i) => ({ ...entry, rank: i + 1 }));
+  return rankByStanding(
+    SAMPLES.map((sample) => {
+      const { points, patched, failed, total, apps } = summarize(sample);
+      return {
+        rank: 0, // assigned by rankByStanding
+        login: sample.login,
+        team: sample.team,
+        points,
+        patched,
+        failed,
+        total,
+        apps,
+        updatedAt: sample.updatedAt,
+        // The fixture's updatedAt is the last scoring change, i.e. a solve.
+        lastSolveAt: sample.updatedAt,
+      };
+    }),
+  );
 }
 
 export function buildMockTeams(entries: LeaderboardEntry[]): TeamStanding[] {

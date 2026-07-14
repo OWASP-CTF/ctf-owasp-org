@@ -1,13 +1,22 @@
 import "server-only";
 import type { AppId } from "@/lib/apps";
+import { rankByStanding } from "./rank";
 import type { LeaderboardSource } from "./source";
 import type { LeaderboardData, LeaderboardEntry, UserProfile } from "./types";
 
 // Shape returned by the deployed Lambda's real scoring endpoint:
-// { leaderboard: [{ rank, author, points, apps: { "juice-shop": { solved, total }, ... } }] }
+// { leaderboard: [{ rank, author, points, lastSolveAt,
+//                   apps: { "juice-shop": { solved, total }, ... } }] }
 // There is no per-app point/max breakdown and no team concept in this source.
 type LambdaAppProgress = { solved: number; total: number };
-type LambdaEntry = { rank: number; author: string; points: number; apps: Partial<Record<AppId, LambdaAppProgress>> };
+type LambdaEntry = {
+  rank: number;
+  author: string;
+  points: number;
+  /** ISO time of the most recent solve — added for tie-breaking. */
+  lastSolveAt?: string | null;
+  apps: Partial<Record<AppId, LambdaAppProgress>>;
+};
 type LambdaResponse = { leaderboard: LambdaEntry[] };
 
 function toEntry(raw: LambdaEntry): LeaderboardEntry {
@@ -31,7 +40,10 @@ function toEntry(raw: LambdaEntry): LeaderboardEntry {
     failed: 0,
     total,
     apps,
-    updatedAt: null,
+    // A solve is the only thing that updates this source, so the last solve
+    // is also the last update.
+    updatedAt: raw.lastSolveAt ?? null,
+    lastSolveAt: raw.lastSolveAt ?? null,
   };
 }
 
@@ -45,7 +57,10 @@ export const lambdaSource: LeaderboardSource = {
     if (!res.ok) throw new Error(`Lambda leaderboard fetch failed: HTTP ${res.status}`);
     const data = (await res.json()) as LambdaResponse;
     return {
-      entries: data.leaderboard.map(toEntry),
+      // Re-rank rather than trusting the Lambda's rank field, so the
+      // lastSolveAt tie-break is applied even if the Lambda ordered ties
+      // arbitrarily.
+      entries: rankByStanding(data.leaderboard.map(toEntry)),
       teams: [],
       generatedAt: new Date().toISOString(),
       capabilities: { apps: true, teams: false, challenges: false },
@@ -66,7 +81,7 @@ export const lambdaSource: LeaderboardSource = {
       failed: entry.failed,
       total: entry.total,
       apps: Object.values(entry.apps).filter(Boolean) as UserProfile["apps"],
-      updatedAt: null,
+      updatedAt: entry.updatedAt,
     };
   },
 };

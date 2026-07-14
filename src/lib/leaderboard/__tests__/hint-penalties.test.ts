@@ -17,8 +17,8 @@ vi.mock("@/lib/hint-store", () => ({
 
 import { withHintPenalties } from "../hint-penalties";
 
-function entry(login: string, points: number): LeaderboardEntry {
-  return { rank: 0, login, team: null, points, patched: 0, failed: 0, total: 0, apps: {}, updatedAt: null };
+function entry(login: string, points: number, lastSolveAt?: string): LeaderboardEntry {
+  return { rank: 0, login, team: null, points, patched: 0, failed: 0, total: 0, apps: {}, updatedAt: null, lastSolveAt };
 }
 
 function data(entries: LeaderboardEntry[]): LeaderboardData {
@@ -57,6 +57,19 @@ describe("withHintPenalties", () => {
     const result = await withHintPenalties(data([entry("ada", 100), entry("bob", 40)]));
     expect(result.entries.find((e) => e.login === "ada")!.hintPenalty).toBeUndefined();
     expect(result.entries.find((e) => e.login === "bob")!.hintPenalty).toBe(10);
+  });
+
+  it("breaks a penalty-created point tie by earlier lastSolveAt", async () => {
+    mocks.getHintPenalties.mockResolvedValueOnce(new Map([["ada", 10]]));
+    // ada drops from 50 to 40, tying bob — but ada's last solve is later, so
+    // bob (who reached 40 first) takes the higher rank despite source order.
+    const result = await withHintPenalties(
+      data([entry("ada", 50, "2026-08-07T15:00:00Z"), entry("bob", 40, "2026-08-07T12:00:00Z")]),
+    );
+    expect(result.entries.map((e) => [e.login, e.rank])).toEqual([
+      ["bob", 1],
+      ["ada", 2],
+    ]);
   });
 
   it("keeps the source order on point ties (stable re-rank)", async () => {
