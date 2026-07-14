@@ -19,11 +19,12 @@ vi.mock("@/lib/upstash", () => ({
 type HintStore = typeof import("@/lib/hint-store");
 
 /** HINTS_ENABLED is read at module load, so each test re-imports the store
- *  with the env it needs. */
-async function loadStore(enabled = true): Promise<HintStore> {
+ *  with the env it needs. Enabled = the explicit flag AND Upstash creds. */
+async function loadStore(enabled = true, { creds = enabled }: { creds?: boolean } = {}): Promise<HintStore> {
   vi.resetModules();
-  vi.stubEnv("UPSTASH_REDIS_REST_URL", enabled ? "https://fake.upstash.io" : "");
-  vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", enabled ? "fake-token" : "");
+  vi.stubEnv("HINTS_ENABLED", enabled ? "true" : "");
+  vi.stubEnv("UPSTASH_REDIS_REST_URL", creds ? "https://fake.upstash.io" : "");
+  vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", creds ? "fake-token" : "");
   return import("@/lib/hint-store");
 }
 
@@ -104,6 +105,19 @@ describe("revealHint", () => {
     const result = await store.revealHint("octocat", "juice-shop", "Challenge-1");
     expect(result).toEqual({ ok: false, error: "Hints are not enabled" });
     expect(mocks.upstashEval).not.toHaveBeenCalled();
+  });
+
+  it("stays off with Upstash creds but no HINTS_ENABLED flag (pre-event state)", async () => {
+    const store = await loadStore(false, { creds: true });
+    expect(store.HINTS_ENABLED).toBe(false);
+    const result = await store.revealHint("octocat", "juice-shop", "Challenge-1");
+    expect(result).toEqual({ ok: false, error: "Hints are not enabled" });
+    expect(mocks.upstashEval).not.toHaveBeenCalled();
+  });
+
+  it("stays off with the flag but no Upstash creds", async () => {
+    const store = await loadStore(true, { creds: false });
+    expect(store.HINTS_ENABLED).toBe(false);
   });
 
   it("degrades to a friendly error when Upstash fails", async () => {

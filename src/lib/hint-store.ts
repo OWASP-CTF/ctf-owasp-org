@@ -22,12 +22,14 @@ import { upstashEval, upstashPipeline } from "@/lib/upstash";
  *  count), so purchases made before a price change keep their old price. */
 export const HINT_COST = 10;
 
-/** Hints are live whenever Upstash is configured — the hint text only exists
- *  there, so there is no meaningful mock mode. Revealing writes to Redis, so
- *  the token must be read/write (already required for TEAM_WRITES_ENABLED). */
-export const HINTS_ENABLED = Boolean(
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN,
-);
+/** Master switch for paid hints: HINTS_ENABLED=true opts in explicitly (so
+ *  hints stay hidden until the event even where Upstash is configured), and
+ *  Upstash credentials must be present — the hint text only exists there, so
+ *  there is no meaningful mock mode. Revealing writes to Redis, so the token
+ *  must be read/write (already required for TEAM_WRITES_ENABLED). */
+export const HINTS_ENABLED =
+  process.env.HINTS_ENABLED === "true" &&
+  Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
 
 const SPENT_KEY = "ctf:hints:spent";
 const userHintsKey = (login: string) => `ctf:user:${login}:hints`;
