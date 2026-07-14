@@ -45,6 +45,8 @@ async function fetchEntries(limit: number): Promise<LeaderboardEntry[]> {
       total,
       apps: {},
       updatedAt: hash.updatedAt ?? null,
+      // The hash's updatedAt is stamped on scoring changes, i.e. solves.
+      lastSolveAt: hash.updatedAt ?? null,
       lastSha: hash.sha ?? null,
       lastPr: hash.pr ? Number(hash.pr) : null,
     };

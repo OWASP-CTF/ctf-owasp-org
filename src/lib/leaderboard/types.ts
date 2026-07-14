@@ -43,6 +43,9 @@ export type LeaderboardEntry = {
   total: number;
   apps: Partial<Record<AppId, AppProgress>>;
   updatedAt: string | null;
+  /** ISO time of the contestant's most recent solve — the point-tie breaker:
+   *  whoever reached the score first (earlier last solve) ranks higher. */
+  lastSolveAt?: string | null;
   /** Points already deducted for revealed hints (see leaderboard/
    *  hint-penalties.ts). `points` is net — this is a transparency marker. */
   hintPenalty?: number;

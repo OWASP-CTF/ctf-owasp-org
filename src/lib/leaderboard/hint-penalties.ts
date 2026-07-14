@@ -1,5 +1,6 @@
 import "server-only";
 import { getHintPenalties, HINTS_ENABLED } from "@/lib/hint-store";
+import { compareStanding } from "./rank";
 import type { LeaderboardData } from "./types";
 
 /**
@@ -30,7 +31,8 @@ export async function withHintPenalties(data: LeaderboardData): Promise<Leaderbo
     .map((entry, i) => {
       const penalty = penalties.get(entry.login) ?? 0;
       return {
-        // Original position breaks ties so equal scores keep the source order.
+        // Original position breaks any tie compareStanding can't (equal
+        // points and no lastSolveAt), keeping the source order.
         i,
         entry:
           penalty > 0
@@ -38,7 +40,7 @@ export async function withHintPenalties(data: LeaderboardData): Promise<Leaderbo
             : entry,
       };
     })
-    .sort((a, b) => b.entry.points - a.entry.points || a.i - b.i)
+    .sort((a, b) => compareStanding(a.entry, b.entry) || a.i - b.i)
     .map(({ entry }, i) => ({ ...entry, rank: i + 1 }));
 
   return { ...data, entries };
