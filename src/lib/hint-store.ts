@@ -1,6 +1,7 @@
 import "server-only";
 import { apps, appsById, type AppId } from "@/lib/apps";
 import { upstashEval, upstashPipeline } from "@/lib/upstash";
+import { dualWriteStub } from "@/lib/dynamo";
 
 /**
  * Paid hints. Hint text lives in the scorer-owned hashes `hints:<app>`
@@ -82,6 +83,8 @@ export async function revealHint(login: string, app: string, id: string): Promis
     return { ok: false, missing: true, error: "No hint available for this challenge" };
   }
   if ((status === "charged" || status === "owned") && typeof hint === "string") {
+    // STUB: only a fresh purchase ("charged") is a real write. Best-effort, never throws.
+    if (status === "charged") await dualWriteStub("hint:purchase", login);
     return { ok: true, hint, alreadyOwned: status === "owned", spent: Number(spent) || 0 };
   }
   return { ok: false, error: "Hint reveal failed — try again" };

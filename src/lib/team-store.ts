@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { upstashEval, upstashPipeline } from "@/lib/upstash";
+import { dualWriteStub } from "@/lib/dynamo";
 
 const MOCK_TEAM_COOKIE = "ctf-mock-team";
 
@@ -96,6 +97,8 @@ export async function createTeam(login: string, name: string): Promise<TeamActio
   );
   if (verdict === "already-on-team") return { ok: false, error: "Leave your current team before creating one" };
   if (verdict === "name-taken") return { ok: false, error: `Team "${slug}" already exists — join it instead` };
+  // STUB: prove the DynamoDB write path (see dualWriteStub). Best-effort, never throws.
+  await dualWriteStub("team:create", login);
   return { ok: true, team: slug };
 }
 
@@ -112,6 +115,8 @@ export async function joinTeam(login: string, slugInput: string): Promise<TeamAc
   if (verdict === "already-on-team") return { ok: false, error: "Leave your current team before joining another" };
   if (verdict === "not-found") return { ok: false, error: `No team "${slug}" — check the slug or create it` };
   if (verdict === "full") return { ok: false, error: `Team "${slug}" is full (${TEAM_MAX_MEMBERS} players max)` };
+  // STUB: prove the DynamoDB write path (see dualWriteStub). Best-effort, never throws.
+  await dualWriteStub("team:join", login);
   return { ok: true, team: slug };
 }
 
@@ -127,6 +132,8 @@ export async function leaveTeam(login: string): Promise<TeamActionResult> {
   // A 'stale' verdict means the membership changed between the read and the
   // script — leaving is idempotent, so treat it as already left.
   await upstashEval(LEAVE_SCRIPT, [userKey(login), teamKey(slug), membersKey(slug)], [login, slug]);
+  // STUB: prove the DynamoDB write path (see dualWriteStub). Best-effort, never throws.
+  await dualWriteStub("team:leave", login);
   return { ok: true, team: null };
 }
 
