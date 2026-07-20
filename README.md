@@ -163,6 +163,8 @@ pk=TEAMS          sk=TEAM#<slug>        name, captain, createdAt, members (strin
 pk=USER#<login>   sk=PROFILE            team (absent = no team)
 pk=USER#<login>   sk=HINT#<app>#<id>    one item per hint purchase (the charge-once guard)
 pk=HINTSPEND      sk=AUTHOR#<login>     spent — one Query serves the whole leaderboard
+pk=HINTS          sk=HINT#<app>#<id>    hint text, copied from the scorer-seeded hints:<app>
+                                        hashes by the backfill (not yet read by the app)
 ```
 
 **Credentials.** On Vercel there are no stored keys: deployments exchange a Vercel OIDC token for the `ctf-web-dynamodb` IAM role (trust + table policy live in the dc34 repo's `terraform/vercel-aws.tf`; the trust covers production + preview only). Locally the SDK default chain is used instead:
@@ -172,7 +174,7 @@ aws sso login --profile AWSAdministratorAccess-942548380662
 AWS_PROFILE=AWSAdministratorAccess-942548380662 pnpm dev
 ```
 
-**Backfill.** Before enabling the mirror in an environment with existing Upstash data, copy it over once so mirrored joins find their team items: `pnpm backfill:dynamo` (dry run), then `pnpm backfill:dynamo --apply`. Idempotent and read-only against Upstash.
+**Backfill.** Before enabling the mirror in an environment with existing Upstash data, copy it over once so mirrored joins find their team items: `pnpm backfill:dynamo` (dry run), then `pnpm backfill:dynamo --apply`. Idempotent and read-only against Upstash. It also copies the scorer-seeded `hints:<app>` text hashes into `pk=HINTS`; Upstash remains the authority for hint text, so re-run the backfill after any hint re-seeding.
 
 ## Branding
 

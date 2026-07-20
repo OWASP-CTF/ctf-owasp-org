@@ -16,7 +16,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
-import { hintPurchaseItem, profileItem, spendItem, teamItem, type DynamoItem } from "../src/lib/dynamo-shapes";
+import { hintPurchaseItem, hintTextItem, profileItem, spendItem, teamItem, type DynamoItem } from "../src/lib/dynamo-shapes";
 
 // ---- env ------------------------------------------------------------------
 // .env.local fallback, same idiom as the live Upstash test suites.
@@ -136,6 +136,23 @@ async function collect(): Promise<DynamoItem[]> {
     }
   }
   console.log(`hint purchases: ${purchaseCount} across ${hintKeys.length} buyers`);
+
+  // Hint text: the scorer-seeded hashes hints:<app> (field = challenge id,
+  // value = text — note NO ctf: prefix, so this scan can't catch the site's own
+  // keys). Upstash stays the authority for hint text; re-run the backfill
+  // whenever the scorer re-seeds hints so pk=HINTS doesn't go stale.
+  const textHashKeys = await scanKeys("hints:*");
+  let textCount = 0;
+  for (const key of textHashKeys) {
+    const app = key.slice("hints:".length);
+    const [hashRes] = await pipeline([["HGETALL", key]]);
+    for (const [id, text] of Object.entries(hgetallToObject(hashRes.result))) {
+      if (!text) continue;
+      items.push(hintTextItem({ app, id, text, updatedAt: now }));
+      textCount++;
+    }
+  }
+  console.log(`hint texts: ${textCount} across ${textHashKeys.length} apps`);
 
   return items;
 }
