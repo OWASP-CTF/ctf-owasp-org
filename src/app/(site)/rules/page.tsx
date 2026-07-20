@@ -10,7 +10,7 @@ const sections: { heading: string; rules: string[] }[] = [
   {
     heading: "Teams",
     rules: [
-      "You can compete solo or as a team of up to four — teams are optional, and you can join or create one from your profile after signing in with GitHub.",
+      "You can compete solo or as a team of up to four. Teams are optional, and you can join or create one from your profile after signing in with GitHub.",
       "Each person belongs to at most one team at a time.",
       "Your GitHub login is your identity for scoring. Submit every pull request from the account you signed in with.",
     ],
@@ -21,7 +21,7 @@ const sections: { heading: string; rules: string[] }[] = [
       "Only the six challenge targets (Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, VAmPI) are in scope. Do not attack the CI scoring pipeline, the leaderboard, or other contestants' forks.",
       "Submit your own work. Don't publish full solutions or patches for others to copy during the event.",
       "Automated mass-submission or spamming pull requests to farm scoring runs will get your account rate-limited or disqualified.",
-      "Using AI tools to help find and patch vulnerabilities is encouraged — it's part of the intended workflow, not a shortcut against the rules.",
+      "Using AI tools to help find and patch vulnerabilities is encouraged. It's part of the intended workflow, not a shortcut against the rules.",
     ],
   },
   {
@@ -29,14 +29,14 @@ const sections: { heading: string; rules: string[] }[] = [
     rules: [
       "The DEF CON Code of Conduct applies at all times. Harassment of any kind ends your event.",
       "Be excellent to the volunteers, organizers, and your fellow competitors.",
-      "Found a bug in a challenge, the scorer, or the site itself? Report it to an organizer — don't exploit it for an unfair edge.",
+      "Found a bug in a challenge, the scorer, or the site itself? Report it to an organizer instead of exploiting it for an unfair edge.",
     ],
   },
   {
     heading: "Scoring & prizes",
     rules: [
       "Each challenge is worth a fixed point value based on difficulty. Points post the moment your PR's regression test passes.",
-      "Your best-ever result per challenge counts — a later successful patch always replaces an earlier miss.",
+      "Your best-ever result per challenge counts. A later successful patch always replaces an earlier miss.",
       "Prizes are awarded to the top individuals and top teams overall. Winners must be present to claim.",
       "Organizer decisions on scoring disputes are final.",
     ],

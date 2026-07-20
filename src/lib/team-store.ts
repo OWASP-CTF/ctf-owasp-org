@@ -109,8 +109,8 @@ export async function createTeam(login: string, name: string): Promise<TeamActio
   if (DATA_BACKEND === "dynamo") {
     const verdict = await dynamoCreateTeam(login, slug, trimmed, createdAt);
     if (verdict === "already-on-team") return { ok: false, error: "Leave your current team before creating one" };
-    if (verdict === "name-taken") return { ok: false, error: `Team "${slug}" already exists — join it instead` };
-    if (verdict !== "ok") return { ok: false, error: "Team update failed — try again" };
+    if (verdict === "name-taken") return { ok: false, error: `Team "${slug}" already exists. Join it instead` };
+    if (verdict !== "ok") return { ok: false, error: "Team update failed. Try again" };
     return { ok: true, team: slug };
   }
 
@@ -120,7 +120,7 @@ export async function createTeam(login: string, name: string): Promise<TeamActio
     [login, trimmed, slug, createdAt],
   );
   if (verdict === "already-on-team") return { ok: false, error: "Leave your current team before creating one" };
-  if (verdict === "name-taken") return { ok: false, error: `Team "${slug}" already exists — join it instead` };
+  if (verdict === "name-taken") return { ok: false, error: `Team "${slug}" already exists. Join it instead` };
   if (DATA_BACKEND === "dual") await mirrorTeamOp("team:create", () => dynamoCreateTeam(login, slug, trimmed, createdAt));
   return { ok: true, team: slug };
 }
@@ -139,9 +139,9 @@ export async function joinTeam(login: string, slugInput: string): Promise<TeamAc
           [login, TEAM_MAX_MEMBERS, slug],
         );
   if (verdict === "already-on-team") return { ok: false, error: "Leave your current team before joining another" };
-  if (verdict === "not-found") return { ok: false, error: `No team "${slug}" — check the slug or create it` };
+  if (verdict === "not-found") return { ok: false, error: `No team "${slug}". Check the slug or create it` };
   if (verdict === "full") return { ok: false, error: `Team "${slug}" is full (${TEAM_MAX_MEMBERS} players max)` };
-  if (verdict !== "ok") return { ok: false, error: "Team update failed — try again" };
+  if (verdict !== "ok") return { ok: false, error: "Team update failed. Try again" };
   if (DATA_BACKEND === "dual") await mirrorTeamOp("team:join", () => dynamoJoinTeam(login, slug, TEAM_MAX_MEMBERS));
   return { ok: true, team: slug };
 }
@@ -158,7 +158,7 @@ export async function leaveTeam(login: string): Promise<TeamActionResult> {
 
   if (DATA_BACKEND === "dynamo") {
     const verdict = await dynamoLeaveTeam(login, slug);
-    if (verdict === "error") return { ok: false, error: "Team update failed — try again" };
+    if (verdict === "error") return { ok: false, error: "Team update failed. Try again" };
     // 'stale' means the membership changed under us — already left, idempotent.
     return { ok: true, team: null };
   }

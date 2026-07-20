@@ -42,7 +42,7 @@ export const apps: AppMeta[] = [
   {
     id: "dvwa",
     name: "DVWA",
-    blurb: "Damn Vulnerable Web Application — PHP classics at three security levels.",
+    blurb: "Damn Vulnerable Web Application: PHP classics at three security levels.",
     accent: "#e53e3e",
     icon: "M12 2 3 7v6c0 5 4 8 9 9 5-1 9-4 9-9V7l-9-5Z",
     repo: "https://github.com/OWASP-CTF/DVWA",
@@ -53,7 +53,7 @@ export const apps: AppMeta[] = [
   {
     id: "webgoat",
     name: "WebGoat",
-    blurb: "OWASP's guided insecure Java app — lesson-driven exploitation and fixes.",
+    blurb: "OWASP's guided insecure Java app with lesson-driven exploitation and fixes.",
     accent: "#2563eb",
     icon: "M4 8c2-3 6-4 8-4s6 1 8 4l-2 10a6 6 0 0 1-12 0L4 8Z",
     repo: "https://github.com/OWASP-CTF/WebGoat",
@@ -75,7 +75,7 @@ export const apps: AppMeta[] = [
   {
     id: "vulnerableapp",
     name: "VulnerableApp",
-    blurb: "OWASP's extensible vulnerability playground — the deepest challenge pool.",
+    blurb: "OWASP's extensible vulnerability playground with the deepest challenge pool.",
     accent: "#22c55e",
     icon: "M12 2v4M12 18v4M2 12h4M18 12h4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
     repo: "https://github.com/OWASP-CTF/VulnerableApp",
@@ -86,7 +86,7 @@ export const apps: AppMeta[] = [
   {
     id: "vampi",
     name: "VAmPI",
-    blurb: "Vulnerable REST API — the OWASP API Security Top 10 track.",
+    blurb: "Vulnerable REST API: the OWASP API Security Top 10 track.",
     accent: "#a1a1aa",
     icon: "M4 6h16v12H4zM4 10h16M8 6v12",
     repo: "https://github.com/OWASP-CTF/VAmPI",

@@ -32,8 +32,8 @@ const dvwa = (statuses: ChallengeResult["status"][]): ChallengeResult[] => [
 ];
 
 const webgoat = (statuses: ChallengeResult["status"][]): ChallengeResult[] => [
-  { key: "auth-bypass-verify-account", name: "Auth Bypass — Verify Account", points: 2, owasp: "A07", status: statuses[0] },
-  { key: "csrf-confirm-flag-1", name: "CSRF — Basic GET Flag", points: 1, owasp: "A01", status: statuses[1] ?? "missing" },
+  { key: "auth-bypass-verify-account", name: "Auth Bypass: Verify Account", points: 2, owasp: "A07", status: statuses[0] },
+  { key: "csrf-confirm-flag-1", name: "CSRF: Basic GET Flag", points: 1, owasp: "A01", status: statuses[1] ?? "missing" },
 ];
 
 const securityShepherd = (statuses: ChallengeResult["status"][]): ChallengeResult[] => [

@@ -95,12 +95,12 @@ export async function revealHint(login: string, app: string, id: string): Promis
       text = await dynamoGetHintText(app, id);
     } catch (err) {
       console.error("Hint text lookup failed:", err);
-      return { ok: false, error: "Hint reveal failed — try again" };
+      return { ok: false, error: "Hint reveal failed. Try again" };
     }
     if (!text) return { ok: false, missing: true, error: "No hint available for this challenge" };
 
     const charge = await dynamoChargeHint(login, app, id, HINT_COST);
-    if (charge.status === "error") return { ok: false, error: "Hint reveal failed — try again" };
+    if (charge.status === "error") return { ok: false, error: "Hint reveal failed. Try again" };
     return { ok: true, hint: text, alreadyOwned: charge.status === "owned", spent: charge.spent };
   }
 
@@ -113,7 +113,7 @@ export async function revealHint(login: string, app: string, id: string): Promis
     );
   } catch (err) {
     console.error("Hint reveal failed:", err);
-    return { ok: false, error: "Hint reveal failed — try again" };
+    return { ok: false, error: "Hint reveal failed. Try again" };
   }
 
   const [status, hint, spent] = Array.isArray(verdict) ? (verdict as unknown[]) : [];
@@ -125,7 +125,7 @@ export async function revealHint(login: string, app: string, id: string): Promis
     if (status === "charged" && DATA_BACKEND === "dual") await mirrorHintCharge(login, app, id, HINT_COST);
     return { ok: true, hint, alreadyOwned: status === "owned", spent: Number(spent) || 0 };
   }
-  return { ok: false, error: "Hint reveal failed — try again" };
+  return { ok: false, error: "Hint reveal failed. Try again" };
 }
 
 export type ViewerHints = {

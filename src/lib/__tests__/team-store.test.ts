@@ -128,7 +128,7 @@ describe("join/create input handling", () => {
     const store = await loadStore(true);
     mocks.upstashEval.mockResolvedValueOnce("not-found");
     const result = await store.joinTeam("octocat", "ghost-team");
-    expect(result).toEqual({ ok: false, error: 'No team "ghost-team" — check the slug or create it' });
+    expect(result).toEqual({ ok: false, error: 'No team "ghost-team". Check the slug or create it' });
   });
 
   it("normalizes the slug before joining", async () => {
@@ -299,7 +299,7 @@ describe("data backend dispatch (CTF_DATA_BACKEND)", () => {
     dynamoMocks.dynamoJoinTeam.mockResolvedValueOnce("not-found");
     expect(await store.joinTeam("octocat", "ghost-team")).toEqual({
       ok: false,
-      error: 'No team "ghost-team" — check the slug or create it',
+      error: 'No team "ghost-team". Check the slug or create it',
     });
     dynamoMocks.dynamoCreateTeam.mockResolvedValueOnce("already-on-team");
     expect(await store.createTeam("octocat", "Blue Team")).toEqual({
@@ -309,7 +309,7 @@ describe("data backend dispatch (CTF_DATA_BACKEND)", () => {
     dynamoMocks.dynamoCreateTeam.mockResolvedValueOnce("error");
     expect(await store.createTeam("octocat", "Blue Team")).toEqual({
       ok: false,
-      error: "Team update failed — try again",
+      error: "Team update failed. Try again",
     });
   });
 

@@ -15,7 +15,7 @@ const faqs: QA[] = [
   },
   {
     q: "Can I compete solo?",
-    a: "Yes, and it's the default. Teams are optional — you can join or create one from your profile after signing in, up to four people.",
+    a: "Yes, and it's the default. Teams are optional: you can join or create one from your profile after signing in, up to four people.",
   },
   {
     q: "Do I need to be at DEF CON in person?",
@@ -23,7 +23,7 @@ const faqs: QA[] = [
   },
   {
     q: "What do I need to bring?",
-    a: "Your own laptop with the dev tools you like to work in, a GitHub account, and a charger — outlets go fast. You'll run the target apps and your fixes locally, then push a PR.",
+    a: "Your own laptop with the dev tools you like to work in, a GitHub account, and a charger (outlets go fast). You'll run the target apps and your fixes locally, then push a PR.",
   },
   {
     q: "How do I submit a solution?",
@@ -31,7 +31,7 @@ const faqs: QA[] = [
   },
   {
     q: "Can I use AI tools to help?",
-    a: "Yes — using AI to assist with vulnerability analysis and remediation is part of the intended skillset this event is built around, not something to hide.",
+    a: "Yes. Using AI to assist with vulnerability analysis and remediation is part of the intended skillset this event is built around, not something to hide.",
   },
   {
     q: "How is my progress tracked?",
@@ -39,14 +39,14 @@ const faqs: QA[] = [
   },
   {
     q: "Is there a prize?",
-    a: "Yes — prizes go to the top individuals and top teams overall. You must be present at the closing ceremony to claim.",
+    a: "Yes. Prizes go to the top individuals and top teams overall. You must be present at the closing ceremony to claim.",
   },
   {
     q: "Where's the full event schedule?",
     a: (
       <>
-        This page only covers the CTF itself. For the full DEF CON 34 schedule — talks, villages,
-        and timing — check{" "}
+        This page only covers the CTF itself. For the full DEF CON 34 schedule (talks, villages,
+        and timing), check{" "}
         <a
           href={event.hackerTrackerUrl}
           target="_blank"

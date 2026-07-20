@@ -53,11 +53,11 @@ export default function HintButton({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || typeof data.hint !== "string") {
-        throw new Error(typeof data.error === "string" ? data.error : "Hint reveal failed — try again");
+        throw new Error(typeof data.error === "string" ? data.error : "Hint reveal failed. Try again");
       }
       onPurchased(app, id, data.hint, Number(data.spent) || 0);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Hint reveal failed — try again");
+      setError(err instanceof Error ? err.message : "Hint reveal failed. Try again");
       setState("error");
     }
   }
@@ -90,7 +90,7 @@ export default function HintButton({
     <button
       type="button"
       onClick={() => setState("confirm")}
-      title={state === "error" ? `${error} — click to retry` : `Reveal hint — costs ${cost} points`}
+      title={state === "error" ? `${error} (click to retry)` : `Reveal hint for ${cost} points`}
       className={`${CHIP} ${
         state === "error"
           ? "border-[#e53e3e]/60 text-[#e53e3e] hover:bg-[#e53e3e]/10"

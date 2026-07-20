@@ -147,7 +147,7 @@ describe("revealHint", () => {
     const store = await loadStore();
     mocks.upstashEval.mockRejectedValueOnce(new Error("upstash down"));
     const result = await store.revealHint("octocat", "juice-shop", "Challenge-1");
-    expect(result).toEqual({ ok: false, error: "Hint reveal failed — try again" });
+    expect(result).toEqual({ ok: false, error: "Hint reveal failed. Try again" });
     consoleError.mockRestore();
   });
 });
@@ -212,7 +212,7 @@ describe("data backend dispatch (CTF_DATA_BACKEND)", () => {
     dynamoMocks.dynamoGetHintText.mockResolvedValueOnce("text");
     dynamoMocks.dynamoChargeHint.mockResolvedValueOnce({ status: "error" });
     const result = await store.revealHint("octocat", "juice-shop", "Challenge-1");
-    expect(result).toEqual({ ok: false, error: "Hint reveal failed — try again" });
+    expect(result).toEqual({ ok: false, error: "Hint reveal failed. Try again" });
   });
 
   it("dynamo mode degrades to a friendly error when the text lookup fails", async () => {
@@ -220,7 +220,7 @@ describe("data backend dispatch (CTF_DATA_BACKEND)", () => {
     const store = await loadStore(true, { backend: "dynamo" });
     dynamoMocks.dynamoGetHintText.mockRejectedValueOnce(new Error("dynamo down"));
     const result = await store.revealHint("octocat", "juice-shop", "Challenge-1");
-    expect(result).toEqual({ ok: false, error: "Hint reveal failed — try again" });
+    expect(result).toEqual({ ok: false, error: "Hint reveal failed. Try again" });
     expect(dynamoMocks.dynamoChargeHint).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });

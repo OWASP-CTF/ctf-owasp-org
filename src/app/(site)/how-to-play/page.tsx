@@ -14,23 +14,23 @@ const steps = [
   },
   {
     title: "Sign in with GitHub",
-    body: "Use the sign-in button in the header. Your GitHub login is how the leaderboard and your profile track your progress — the scorer credits points to the account that authors the pull request, so play from the same account you sign in with.",
+    body: "Use the sign-in button in the header. Your GitHub login is how the leaderboard and your profile track your progress. The scorer credits points to the account that authors the pull request, so play from the same account you sign in with.",
   },
   {
     title: "Pick a target and a challenge",
-    body: "Browse the six vulnerable apps on the Challenges page — Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI. Each has dozens of independent challenges at different difficulty levels; pick any one to start.",
+    body: "Browse the six vulnerable apps on the Challenges page: Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI. Each has dozens of independent challenges at different difficulty levels; pick any one to start.",
   },
   {
     title: "Find the vulnerability",
-    body: "Work the target like a real audit: read the source, exercise the app, and identify the OWASP Top 10 flaw behind the challenge. Using AI tools to help analyze and remediate is part of the intended workflow — use them if it helps.",
+    body: "Work the target like a real audit: read the source, exercise the app, and identify the OWASP Top 10 flaw behind the challenge. Using AI tools to help analyze and remediate is part of the intended workflow, so use them if it helps.",
   },
   {
     title: "Patch it and open a pull request",
-    body: "Fork the target's repo under the OWASP-CTF org, fix the vulnerability on a branch in your fork, and open a PR back against the repo's dc34-ctf branch. This is secure development practice, not flag hunting — the fix itself is the deliverable.",
+    body: "Fork the target's repo under the OWASP-CTF org, fix the vulnerability on a branch in your fork, and open a PR back against the repo's dc34-ctf branch. This is secure development practice, not flag hunting. The fix itself is the deliverable.",
   },
   {
     title: "Get scored automatically",
-    body: "A GitHub Action builds your patched app and runs the full regression suite against it. Every passing challenge test scores its points immediately — no manual grading, no waiting on an organizer. Pushing more fixes to the same PR re-scores it.",
+    body: "A GitHub Action builds your patched app and runs the full regression suite against it. Every passing challenge test scores its points immediately: no manual grading, no waiting on an organizer. Pushing more fixes to the same PR re-scores it.",
   },
 ];
 
@@ -54,9 +54,9 @@ cd juice-shop`,
   },
   {
     title: "Find the flaw",
-    body: "The Login Admin challenge (A05: Injection) lives in routes/login.ts — user input is concatenated straight into the SQL string, so an email like ' OR 1=1-- logs in as the first user in the table: the admin.",
+    body: "The Login Admin challenge (A05: Injection) lives in routes/login.ts. User input is concatenated straight into the SQL string, so an email like ' OR 1=1-- logs in as the first user in the table: the admin.",
     lang: "ts",
-    code: `// routes/login.ts — the vulnerable query
+    code: `// routes/login.ts: the vulnerable query
 models.sequelize.query(
   \`SELECT * FROM Users WHERE email = '\${req.body.email || ''}'
     AND password = '\${security.hash(req.body.password || '')}'
@@ -66,9 +66,9 @@ models.sequelize.query(
   },
   {
     title: "Patch it",
-    body: "Replace string interpolation with bind parameters. The database driver now treats the email and password strictly as data — they can never rewrite the query itself.",
+    body: "Replace string interpolation with bind parameters. The database driver now treats the email and password strictly as data, so they can never rewrite the query itself.",
     lang: "ts",
-    code: `// routes/login.ts — parameterized fix
+    code: `// routes/login.ts: parameterized fix
 models.sequelize.query(
   'SELECT * FROM Users WHERE email = $1 AND password = $2 AND deletedAt IS NULL',
   {
@@ -80,7 +80,7 @@ models.sequelize.query(
   },
   {
     title: "Commit and push to your fork",
-    body: "Write the commit message like you would on a real security fix — say what was vulnerable and how the patch closes it.",
+    body: "Write the commit message like you would on a real security fix: say what was vulnerable and how the patch closes it.",
     lang: "shell",
     code: `git add routes/login.ts
 git commit -m "Fix SQL injection in login route with bind parameters"
@@ -88,7 +88,7 @@ git push -u origin fix/login-sql-injection`,
   },
   {
     title: "Open the PR against dc34-ctf",
-    body: "The base repo is OWASP-CTF/juice-shop and the base branch is dc34-ctf — the scorer only watches that branch. The GitHub web UI's “Compare & pull request” button works too; just check the base branch.",
+    body: "The base repo is OWASP-CTF/juice-shop and the base branch is dc34-ctf. The scorer only watches that branch. The GitHub web UI's “Compare & pull request” button works too; just check the base branch.",
     lang: "shell",
     code: `gh pr create --repo OWASP-CTF/juice-shop --base dc34-ctf \\
   --title "Fix SQL injection in login route" \\
@@ -161,7 +161,7 @@ export default function HowToPlayPage() {
           <p className="max-w-2xl text-sm leading-relaxed text-zinc-400">
             Here&rsquo;s the whole loop on a real challenge: <span className="text-zinc-200">Login Admin</span> in
             Juice Shop, a classic SQL injection. Follow it verbatim to land your first points and
-            see exactly what a scoring run looks like — then repeat the pattern on every other
+            see exactly what a scoring run looks like, then repeat the pattern on every other
             challenge.
           </p>
         </div>
@@ -189,7 +189,7 @@ export default function HowToPlayPage() {
         <div className="rounded-lg border border-[#14b8a6]/30 bg-[#14b8a6]/[0.06] p-5">
           <p className="text-xs font-medium uppercase tracking-wider text-[#14b8a6]">Bonus</p>
           <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-            That one-line fix doesn&rsquo;t just close Login Admin — the same injection powers the{" "}
+            That one-line fix doesn&rsquo;t just close Login Admin. The same injection powers the{" "}
             <span className="text-zinc-200">Login Bender</span> and{" "}
             <span className="text-zinc-200">Login Jim</span> challenges, so a single parameterized
             query scores all three. Real fixes often cascade like this: patch the root cause, not
@@ -203,7 +203,7 @@ export default function HowToPlayPage() {
         <h3 className="font-semibold text-white">Good to know</h3>
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm leading-relaxed text-zinc-400">
           <li>
-            Every push to an open PR re-runs the scorer, and the run evaluates your whole app — so
+            Every push to an open PR re-runs the scorer, and the run evaluates your whole app, so
             you can keep stacking fixes on one branch or open a fresh PR per fix, whichever you
             prefer.
           </li>
@@ -212,7 +212,7 @@ export default function HowToPlayPage() {
             earlier miss; you can never lose points by trying.
           </li>
           <li>
-            Points are credited to the GitHub account that authored the PR — team totals are the
+            Points are credited to the GitHub account that authored the PR. Team totals are the
             sum of what each member lands individually.
           </li>
         </ul>
@@ -222,7 +222,7 @@ export default function HowToPlayPage() {
       <div className="flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#16162a] p-5">
         <h3 className="font-semibold text-white">How scoring works</h3>
         <p className="text-sm leading-relaxed text-zinc-400">
-          Every challenge is worth a fixed number of points based on difficulty — harder
+          Every challenge is worth a fixed number of points based on difficulty, and harder
           vulnerabilities pay out more. Points are awarded the moment your PR&rsquo;s regression
           test passes, and your best-ever result for each challenge is what counts, so a later
           fix always replaces an earlier miss. Your live total, per-app breakdown, and
