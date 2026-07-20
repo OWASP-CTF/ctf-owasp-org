@@ -1,7 +1,8 @@
 import "server-only";
 import { apps, appsById, type AppId } from "@/lib/apps";
 import { upstashEval, upstashPipeline } from "@/lib/upstash";
-import { dualWriteStub } from "@/lib/dynamo";
+import { DATA_BACKEND } from "@/lib/dynamo";
+import { dynamoChargeHint, dynamoGetHintPenalties, dynamoGetViewerPurchases, mirrorHintCharge } from "@/lib/dynamo-hint-store";
 
 /**
  * Paid hints. Hint text lives in the scorer-owned hashes `hints:<app>`
@@ -13,6 +14,13 @@ import { dualWriteStub } from "@/lib/dynamo";
  * Displayed scores subtract the penalty as an overlay (see
  * leaderboard/hint-penalties.ts) — the scorer's leaderboard ZSET is never
  * decremented.
+ *
+ * CTF_DATA_BACKEND (see lib/dynamo.ts) picks where purchases are recorded:
+ * "dual" (default) keeps the Upstash Lua verdict authoritative and mirrors each
+ * fresh charge into DynamoDB best-effort; "dynamo" stores purchases and reads
+ * penalties from DynamoDB instead. Hint TEXT lives only in the scorer-seeded
+ * Upstash hashes, so Upstash creds are required in every mode (hence the
+ * HINTS_ENABLED credential check below).
  *
  * Callers (the /api/hints route handlers) are responsible for authenticating
  * the session and deriving `login` server-side — nothing here trusts
@@ -66,6 +74,26 @@ export async function revealHint(login: string, app: string, id: string): Promis
   if (!isAppId(app)) return { ok: false, error: "Unknown app" };
   if (!CHALLENGE_ID_RE.test(id)) return { ok: false, error: "Invalid challenge id" };
 
+  if (DATA_BACKEND === "dynamo") {
+    // Hint text lives only in Upstash — read it there, charge in DynamoDB. The
+    // text lookup isn't atomic with the charge (unlike the Lua re-check), which
+    // is fine: hint hashes change rarely and the charge-once guard is what
+    // matters — a hint deleted mid-flight just can't be charged for twice.
+    let text: string | null = null;
+    try {
+      const [res] = await upstashPipeline([["HGET", hintHashKey(app), id]]);
+      text = typeof res.result === "string" && res.result ? res.result : null;
+    } catch (err) {
+      console.error("Hint text lookup failed:", err);
+      return { ok: false, error: "Hint reveal failed — try again" };
+    }
+    if (!text) return { ok: false, missing: true, error: "No hint available for this challenge" };
+
+    const charge = await dynamoChargeHint(login, app, id, HINT_COST);
+    if (charge.status === "error") return { ok: false, error: "Hint reveal failed — try again" };
+    return { ok: true, hint: text, alreadyOwned: charge.status === "owned", spent: charge.spent };
+  }
+
   let verdict: unknown;
   try {
     verdict = await upstashEval(
@@ -83,8 +111,8 @@ export async function revealHint(login: string, app: string, id: string): Promis
     return { ok: false, missing: true, error: "No hint available for this challenge" };
   }
   if ((status === "charged" || status === "owned") && typeof hint === "string") {
-    // STUB: only a fresh purchase ("charged") is a real write. Best-effort, never throws.
-    if (status === "charged") await dualWriteStub("hint:purchase", login);
+    // Only a fresh purchase ("charged") is a real write worth mirroring.
+    if (status === "charged" && DATA_BACKEND === "dual") await mirrorHintCharge(login, app, id, HINT_COST);
     return { ok: true, hint, alreadyOwned: status === "owned", spent: Number(spent) || 0 };
   }
   return { ok: false, error: "Hint reveal failed — try again" };
@@ -104,17 +132,25 @@ const NO_HINTS: ViewerHints = { purchased: {}, spent: 0, count: 0 };
 export async function getViewerHints(login: string): Promise<ViewerHints> {
   if (!HINTS_ENABLED) return NO_HINTS;
 
-  const [members, spentRes] = await upstashPipeline([
-    ["SMEMBERS", userHintsKey(login)],
-    ["HGET", SPENT_KEY, login],
-  ]);
-  const owned = (Array.isArray(members.result) ? (members.result as string[]) : [])
-    .flatMap((member) => {
+  let owned: { app: AppId; id: string }[];
+  let spent: number;
+  if (DATA_BACKEND === "dynamo") {
+    const viewer = await dynamoGetViewerPurchases(login);
+    owned = viewer.purchases.flatMap(({ app, id }) => (isAppId(app) ? [{ app, id }] : []));
+    spent = viewer.spent;
+  } else {
+    const [members, spentRes] = await upstashPipeline([
+      ["SMEMBERS", userHintsKey(login)],
+      ["HGET", SPENT_KEY, login],
+    ]);
+    owned = (Array.isArray(members.result) ? (members.result as string[]) : []).flatMap((member) => {
       const slash = member.indexOf("/");
       if (slash === -1) return [];
       const app = member.slice(0, slash);
       return isAppId(app) ? [{ app, id: member.slice(slash + 1) }] : [];
     });
+    spent = Number(spentRes.result) || 0;
+  }
 
   const purchased: ViewerHints["purchased"] = {};
   if (owned.length > 0) {
@@ -128,7 +164,7 @@ export async function getViewerHints(login: string): Promise<ViewerHints> {
 
   return {
     purchased,
-    spent: Number(spentRes.result) || 0,
+    spent,
     count: owned.length,
   };
 }
@@ -136,6 +172,7 @@ export async function getViewerHints(login: string): Promise<ViewerHints> {
 /** Penalty points per login — one HGETALL serves the whole leaderboard. */
 export async function getHintPenalties(): Promise<Map<string, number>> {
   if (!HINTS_ENABLED) return new Map();
+  if (DATA_BACKEND === "dynamo") return dynamoGetHintPenalties();
 
   const [res] = await upstashPipeline([["HGETALL", SPENT_KEY]]);
   const flat = Array.isArray(res.result) ? (res.result as string[]) : [];

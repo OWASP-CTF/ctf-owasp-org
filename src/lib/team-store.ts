@@ -1,7 +1,16 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { upstashEval, upstashPipeline } from "@/lib/upstash";
-import { dualWriteStub } from "@/lib/dynamo";
+import { DATA_BACKEND } from "@/lib/dynamo";
+import {
+  dynamoCreateTeam,
+  dynamoGetUserTeamSlug,
+  dynamoGetViewerTeam,
+  dynamoJoinTeam,
+  dynamoLeaveTeam,
+  dynamoListTeams,
+  mirrorTeamOp,
+} from "@/lib/dynamo-team-store";
 
 const MOCK_TEAM_COOKIE = "ctf-mock-team";
 
@@ -14,6 +23,11 @@ const MOCK_TEAM_COOKIE = "ctf-mock-team";
  *   HSET ctf:user:<login> team <slug>
  * When unset, actions persist to a per-browser httpOnly cookie instead, so
  * join/leave stays demoable against the mock leaderboard with zero backend.
+ *
+ * When writes are enabled, CTF_DATA_BACKEND (see lib/dynamo.ts) picks the store:
+ * "dual" (default) keeps the Upstash Lua verdict authoritative and mirrors every
+ * success into DynamoDB best-effort; "dynamo" replaces both writes and reads with
+ * the DynamoDB store; "upstash" is Upstash only.
  *
  * Callers (the /api/team route handlers) are responsible for authenticating
  * the session and deriving `login` server-side — nothing here trusts
@@ -77,6 +91,7 @@ async function setMockTeam(slug: string): Promise<TeamActionResult> {
 }
 
 async function getUserTeamSlug(login: string): Promise<string | null> {
+  if (DATA_BACKEND === "dynamo") return dynamoGetUserTeamSlug(login);
   const [current] = await upstashPipeline([["HGET", userKey(login), "team"]]);
   return typeof current.result === "string" && current.result ? current.result : null;
 }
@@ -89,16 +104,24 @@ export async function createTeam(login: string, name: string): Promise<TeamActio
     return { ok: false, error: `Team name must be ${NAME_MAX_LENGTH} characters or fewer` };
   }
   if (!TEAM_WRITES_ENABLED) return setMockTeam(slug);
+  const createdAt = new Date().toISOString();
+
+  if (DATA_BACKEND === "dynamo") {
+    const verdict = await dynamoCreateTeam(login, slug, trimmed, createdAt);
+    if (verdict === "already-on-team") return { ok: false, error: "Leave your current team before creating one" };
+    if (verdict === "name-taken") return { ok: false, error: `Team "${slug}" already exists — join it instead` };
+    if (verdict !== "ok") return { ok: false, error: "Team update failed — try again" };
+    return { ok: true, team: slug };
+  }
 
   const verdict = await upstashEval(
     CREATE_SCRIPT,
     [userKey(login), teamKey(slug), membersKey(slug)],
-    [login, trimmed, slug, new Date().toISOString()],
+    [login, trimmed, slug, createdAt],
   );
   if (verdict === "already-on-team") return { ok: false, error: "Leave your current team before creating one" };
   if (verdict === "name-taken") return { ok: false, error: `Team "${slug}" already exists — join it instead` };
-  // STUB: prove the DynamoDB write path (see dualWriteStub). Best-effort, never throws.
-  await dualWriteStub("team:create", login);
+  if (DATA_BACKEND === "dual") await mirrorTeamOp("team:create", () => dynamoCreateTeam(login, slug, trimmed, createdAt));
   return { ok: true, team: slug };
 }
 
@@ -107,16 +130,19 @@ export async function joinTeam(login: string, slugInput: string): Promise<TeamAc
   if (!slug) return { ok: false, error: "Team is required" };
   if (!TEAM_WRITES_ENABLED) return setMockTeam(slug);
 
-  const verdict = await upstashEval(
-    JOIN_SCRIPT,
-    [userKey(login), teamKey(slug), membersKey(slug)],
-    [login, TEAM_MAX_MEMBERS, slug],
-  );
+  const verdict =
+    DATA_BACKEND === "dynamo"
+      ? await dynamoJoinTeam(login, slug, TEAM_MAX_MEMBERS)
+      : await upstashEval(
+          JOIN_SCRIPT,
+          [userKey(login), teamKey(slug), membersKey(slug)],
+          [login, TEAM_MAX_MEMBERS, slug],
+        );
   if (verdict === "already-on-team") return { ok: false, error: "Leave your current team before joining another" };
   if (verdict === "not-found") return { ok: false, error: `No team "${slug}" — check the slug or create it` };
   if (verdict === "full") return { ok: false, error: `Team "${slug}" is full (${TEAM_MAX_MEMBERS} players max)` };
-  // STUB: prove the DynamoDB write path (see dualWriteStub). Best-effort, never throws.
-  await dualWriteStub("team:join", login);
+  if (verdict !== "ok") return { ok: false, error: "Team update failed — try again" };
+  if (DATA_BACKEND === "dual") await mirrorTeamOp("team:join", () => dynamoJoinTeam(login, slug, TEAM_MAX_MEMBERS));
   return { ok: true, team: slug };
 }
 
@@ -129,11 +155,18 @@ export async function leaveTeam(login: string): Promise<TeamActionResult> {
 
   const slug = await getUserTeamSlug(login);
   if (!slug) return { ok: true, team: null };
+
+  if (DATA_BACKEND === "dynamo") {
+    const verdict = await dynamoLeaveTeam(login, slug);
+    if (verdict === "error") return { ok: false, error: "Team update failed — try again" };
+    // 'stale' means the membership changed under us — already left, idempotent.
+    return { ok: true, team: null };
+  }
+
   // A 'stale' verdict means the membership changed between the read and the
   // script — leaving is idempotent, so treat it as already left.
   await upstashEval(LEAVE_SCRIPT, [userKey(login), teamKey(slug), membersKey(slug)], [login, slug]);
-  // STUB: prove the DynamoDB write path (see dualWriteStub). Best-effort, never throws.
-  await dualWriteStub("team:leave", login);
+  if (DATA_BACKEND === "dual") await mirrorTeamOp("team:leave", () => dynamoLeaveTeam(login, slug));
   return { ok: true, team: null };
 }
 
@@ -142,6 +175,7 @@ export async function leaveTeam(login: string): Promise<TeamActionResult> {
  *  returns [] when writes are disabled. */
 export async function listTeams(): Promise<TeamInfo[]> {
   if (!TEAM_WRITES_ENABLED) return [];
+  if (DATA_BACKEND === "dynamo") return dynamoListTeams();
 
   const prefix = "ctf:team:";
   const suffix = ":members";
@@ -180,6 +214,7 @@ export async function getViewerTeam(login: string): Promise<TeamInfo | null> {
     const slug = store.get(MOCK_TEAM_COOKIE)?.value ?? null;
     return slug ? { slug, name: slug, members: [login] } : null;
   }
+  if (DATA_BACKEND === "dynamo") return dynamoGetViewerTeam(login);
 
   const slug = await getUserTeamSlug(login);
   if (!slug) return null;
