@@ -17,13 +17,15 @@ import { awsCredentialsProvider } from "@vercel/oidc-aws-credentials-provider";
  * reads an env var first, so any of them can move to Vercel-managed env vars
  * (Project → Settings → Environment Variables) without touching this file.
  *
- *   AWS_REGION       must be pinned — Vercel overwrites the ambient AWS_REGION with
- *                    the function's own execution region, which is not where the
- *                    table lives.
+ *   CTF_AWS_REGION   where the table lives. Deliberately NOT the standard AWS_REGION:
+ *                    Vercel injects that with the function's own execution region
+ *                    (us-east-1 for iad1), which silently pointed every request at
+ *                    the wrong region — the IAM policy is scoped to the table's ARN
+ *                    in us-west-2, so writes failed with AccessDenied.
  *   AWS_ROLE_ARN     the role Vercel's OIDC token may assume.
  *   CTF_DYNAMO_TABLE the single leaderboard table, shared with the scorer.
  */
-export const AWS_REGION = process.env.AWS_REGION ?? "us-west-2";
+export const AWS_REGION = process.env.CTF_AWS_REGION ?? "us-west-2";
 export const AWS_ROLE_ARN = process.env.AWS_ROLE_ARN ?? "arn:aws:iam::942548380662:role/ctf-web-dynamodb";
 export const CTF_DYNAMO_TABLE = process.env.CTF_DYNAMO_TABLE ?? "ctf-leaderboard";
 
