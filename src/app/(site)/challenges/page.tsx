@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import PageHeader from "@/components/page-header";
 import ChallengeGrid from "@/components/challenge-grid";
+import HintNotice from "@/components/hint-notice";
 import { apps, totalChallenges, totalMaxPoints } from "@/lib/apps";
 import { getChallengeCatalog } from "@/lib/challenges";
-import { getHintAvailability } from "@/lib/hint-store";
+import { getHintAvailability, HINTS_ENABLED, HINT_COST } from "@/lib/hint-store";
 
 export const metadata: Metadata = {
   title: "Challenges · OWASP CTF @ DEF CON 34",
@@ -20,12 +21,13 @@ export default async function ChallengesPage() {
   const sortedApps = [...apps].sort((a, b) => a.name.localeCompare(b.name));
 
   const description = catalog
-    ? `${catalog.total} challenges across six vulnerable apps, each tagged with its OWASP Top 10 category. Points scale with difficulty — patch the regression test tied to each challenge to score it.`
-    : `${totalChallenges} challenges across six vulnerable apps, worth ${totalMaxPoints} points total. Points scale with difficulty — patch the regression test tied to each challenge to score it.`;
+    ? `${catalog.total} challenges across six vulnerable apps, each tagged with its OWASP Top 10 category. Points scale with difficulty. Patch the regression test tied to each challenge to score it.`
+    : `${totalChallenges} challenges across six vulnerable apps, worth ${totalMaxPoints} points total. Points scale with difficulty. Patch the regression test tied to each challenge to score it.`;
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader eyebrow="Targets" title="Challenges" description={description} />
+      <HintNotice active={HINTS_ENABLED} cost={HINT_COST} />
       <ChallengeGrid apps={sortedApps} catalog={catalog?.byApp ?? null} hints={hintAvailability} />
     </div>
   );

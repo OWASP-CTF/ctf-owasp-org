@@ -119,7 +119,7 @@ export default async function ProfilePage() {
 
       {!profile || profile.apps.length === 0 ? (
         <div className="ds-card rounded-lg border border-white/[0.06] bg-[#16162a] px-5 py-10 text-center">
-          <p className="text-sm text-zinc-400">No scored PRs yet — submit a patch to start earning points.</p>
+          <p className="text-sm text-zinc-400">No scored PRs yet. Submit a patch to start earning points.</p>
           <Link href="/how-to-play" className="mt-3 inline-block text-sm text-[#2563eb] hover:underline">
             How to play →
           </Link>

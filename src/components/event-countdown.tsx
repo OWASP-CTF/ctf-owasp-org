@@ -70,7 +70,7 @@ export default function EventCountdown({
           style={{ animation: "blink 1s step-end infinite" }}
           aria-hidden="true"
         />
-        The CTF is live — go break something.
+        The CTF is live. Go break something.
       </div>
     );
   }

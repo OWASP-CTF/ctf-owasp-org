@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "OWASP CTF @ DEF CON 34",
   description:
-    "OWASP Capture The Flag competition at DEF CON 34 — Theme: Agency. August 6-9, 2026, Las Vegas Convention Center.",
+    "OWASP Capture The Flag competition at DEF CON 34. Theme: Agency. August 6-9, 2026, Las Vegas Convention Center.",
 };
 
 export default function RootLayout({

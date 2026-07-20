@@ -9,11 +9,11 @@ import { event } from "@/lib/site";
 const STEPS = [
   {
     title: "Pick a target",
-    body: "Choose from six real, deliberately vulnerable OWASP apps — Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI.",
+    body: "Choose from six real, deliberately vulnerable OWASP apps: Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI.",
   },
   {
     title: "Find the vulnerability",
-    body: "Work through the OWASP Top 10 (Web and API) to identify a real flaw in the target's source — use AI tooling to speed up analysis if you like.",
+    body: "Work through the OWASP Top 10 (Web and API) to identify a real flaw in the target's source. Use AI tooling to speed up analysis if you like.",
   },
   {
     title: "Patch it and open a PR",
@@ -21,7 +21,7 @@ const STEPS = [
   },
   {
     title: "Get scored automatically",
-    body: "A GitHub Action runs that challenge's regression test against your patched app. A passing test scores points immediately — no manual grading.",
+    body: "A GitHub Action runs that challenge's regression test against your patched app. A passing test scores points immediately, no manual grading.",
   },
 ];
 
@@ -136,8 +136,8 @@ export default async function Home() {
 
           <p className="max-w-2xl text-balance text-base leading-relaxed text-zinc-400">
             Break real vulnerabilities in six OWASP training apps, patch them for real, and ship
-            the fix as a GitHub pull request. CI validates your patch and scores it automatically —
-            practice the full secure development lifecycle, not just flag-hunting.
+            the fix as a GitHub pull request. CI validates your patch and scores it automatically.
+            Practice the full secure development lifecycle, not just flag-hunting.
           </p>
 
         </main>
@@ -154,11 +154,11 @@ export default async function Home() {
               What to expect
             </p>
             <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              This isn&rsquo;t flag hunting — it&rsquo;s the real fix workflow
+              This isn&rsquo;t flag hunting. It&rsquo;s the real fix workflow
             </h2>
             <p className="max-w-2xl text-base leading-relaxed text-zinc-400">
               Every challenge maps to a real, disclosed vulnerability class from the OWASP Top 10.
-              You find it, patch it, and prove the fix with a passing regression test — the same
+              You find it, patch it, and prove the fix with a passing regression test, the same
               loop a security engineer runs against a live codebase.
             </p>
             <div className="mt-1 h-px w-full bg-gradient-to-r from-[#2563eb]/40 via-white/[0.06] to-transparent" />
@@ -193,7 +193,7 @@ export default async function Home() {
             </h2>
             <p className="max-w-2xl text-base leading-relaxed text-zinc-400">
               Each app is a well-known, deliberately vulnerable OWASP project. Points scale with
-              difficulty — the deeper flaws in VulnerableApp and WebGoat pay out the most.
+              difficulty, and the deeper flaws in VulnerableApp and WebGoat pay out the most.
             </p>
             <div className="mt-1 h-px w-full bg-gradient-to-r from-[#2563eb]/40 via-white/[0.06] to-transparent" />
           </div>
