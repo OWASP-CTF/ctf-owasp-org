@@ -20,6 +20,9 @@ const dynamoMocks = vi.hoisted(() => ({
     .fn<(login: string) => Promise<{ purchases: { app: string; id: string }[]; spent: number }>>()
     .mockResolvedValue({ purchases: [], spent: 0 }),
   dynamoGetHintPenalties: vi.fn<() => Promise<Map<string, number>>>().mockResolvedValue(new Map()),
+  dynamoGetHintText: vi.fn<(app: string, id: string) => Promise<string | null>>().mockResolvedValue(null),
+  dynamoGetHintTexts: vi.fn<(refs: { app: string; id: string }[]) => Promise<(string | null)[]>>().mockResolvedValue([]),
+  dynamoGetHintAvailability: vi.fn<() => Promise<Record<string, string[]>>>().mockResolvedValue({}),
   mirrorHintCharge: vi.fn<(...args: unknown[]) => Promise<void>>().mockResolvedValue(undefined),
 }));
 
@@ -34,7 +37,7 @@ type HintStore = typeof import("@/lib/hint-store");
 
 /** HINTS_ENABLED and CTF_DATA_BACKEND are read at module load, so each test
  *  re-imports the store with the env it needs. Enabled = the explicit flag AND
- *  Upstash creds. No backend = "dual". */
+ *  (dynamo mode OR Upstash creds). No backend = "dual". */
 async function loadStore(
   enabled = true,
   { creds = enabled, backend }: { creds?: boolean; backend?: "dual" | "upstash" | "dynamo" } = {},
@@ -134,7 +137,7 @@ describe("revealHint", () => {
     expect(mocks.upstashEval).not.toHaveBeenCalled();
   });
 
-  it("stays off with the flag but no Upstash creds", async () => {
+  it("stays off with the flag but no Upstash creds (dual mode needs them for text)", async () => {
     const store = await loadStore(true, { creds: false });
     expect(store.HINTS_ENABLED).toBe(false);
   });
@@ -171,20 +174,26 @@ describe("data backend dispatch (CTF_DATA_BACKEND)", () => {
     expect(dynamoMocks.mirrorHintCharge).not.toHaveBeenCalled();
   });
 
-  it("dynamo mode reads the text from Upstash but charges in DynamoDB", async () => {
+  it("dynamo mode reads the text and charges in DynamoDB — no Upstash at all", async () => {
     const store = await loadStore(true, { backend: "dynamo" });
-    mocks.upstashPipeline.mockResolvedValueOnce([{ result: "Check the admin route." }]);
+    dynamoMocks.dynamoGetHintText.mockResolvedValueOnce("Check the admin route.");
     dynamoMocks.dynamoChargeHint.mockResolvedValueOnce({ status: "charged", spent: 10 });
     const result = await store.revealHint("octocat", "juice-shop", "Challenge-5-Admin-Section");
     expect(result).toEqual({ ok: true, hint: "Check the admin route.", alreadyOwned: false, spent: 10 });
-    expect(mocks.upstashPipeline).toHaveBeenCalledWith([["HGET", "hints:juice-shop", "Challenge-5-Admin-Section"]]);
+    expect(dynamoMocks.dynamoGetHintText).toHaveBeenCalledWith("juice-shop", "Challenge-5-Admin-Section");
     expect(dynamoMocks.dynamoChargeHint).toHaveBeenCalledWith("octocat", "juice-shop", "Challenge-5-Admin-Section", 10);
     expect(mocks.upstashEval).not.toHaveBeenCalled();
+    expect(mocks.upstashPipeline).not.toHaveBeenCalled();
+  });
+
+  it("dynamo mode enables hints without Upstash credentials", async () => {
+    const store = await loadStore(true, { creds: false, backend: "dynamo" });
+    expect(store.HINTS_ENABLED).toBe(true);
   });
 
   it("dynamo mode returns an owned hint for free", async () => {
     const store = await loadStore(true, { backend: "dynamo" });
-    mocks.upstashPipeline.mockResolvedValueOnce([{ result: "text" }]);
+    dynamoMocks.dynamoGetHintText.mockResolvedValueOnce("text");
     dynamoMocks.dynamoChargeHint.mockResolvedValueOnce({ status: "owned", spent: 30 });
     const result = await store.revealHint("octocat", "juice-shop", "Challenge-5-Admin-Section");
     expect(result).toEqual({ ok: true, hint: "text", alreadyOwned: true, spent: 30 });
@@ -192,7 +201,7 @@ describe("data backend dispatch (CTF_DATA_BACKEND)", () => {
 
   it("dynamo mode reports a missing hint without charging", async () => {
     const store = await loadStore(true, { backend: "dynamo" });
-    mocks.upstashPipeline.mockResolvedValueOnce([{ result: null }]);
+    dynamoMocks.dynamoGetHintText.mockResolvedValueOnce(null);
     const result = await store.revealHint("octocat", "juice-shop", "Challenge-999-Nope");
     expect(result).toEqual({ ok: false, missing: true, error: "No hint available for this challenge" });
     expect(dynamoMocks.dynamoChargeHint).not.toHaveBeenCalled();
@@ -200,7 +209,7 @@ describe("data backend dispatch (CTF_DATA_BACKEND)", () => {
 
   it("dynamo mode degrades to a friendly error when the charge fails", async () => {
     const store = await loadStore(true, { backend: "dynamo" });
-    mocks.upstashPipeline.mockResolvedValueOnce([{ result: "text" }]);
+    dynamoMocks.dynamoGetHintText.mockResolvedValueOnce("text");
     dynamoMocks.dynamoChargeHint.mockResolvedValueOnce({ status: "error" });
     const result = await store.revealHint("octocat", "juice-shop", "Challenge-1");
     expect(result).toEqual({ ok: false, error: "Hint reveal failed — try again" });
@@ -209,14 +218,14 @@ describe("data backend dispatch (CTF_DATA_BACKEND)", () => {
   it("dynamo mode degrades to a friendly error when the text lookup fails", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const store = await loadStore(true, { backend: "dynamo" });
-    mocks.upstashPipeline.mockRejectedValueOnce(new Error("upstash down"));
+    dynamoMocks.dynamoGetHintText.mockRejectedValueOnce(new Error("dynamo down"));
     const result = await store.revealHint("octocat", "juice-shop", "Challenge-1");
     expect(result).toEqual({ ok: false, error: "Hint reveal failed — try again" });
     expect(dynamoMocks.dynamoChargeHint).not.toHaveBeenCalled();
     consoleError.mockRestore();
   });
 
-  it("dynamo mode lists purchases from DynamoDB and hydrates texts from Upstash", async () => {
+  it("dynamo mode lists purchases and hydrates texts from DynamoDB", async () => {
     const store = await loadStore(true, { backend: "dynamo" });
     dynamoMocks.dynamoGetViewerPurchases.mockResolvedValueOnce({
       purchases: [
@@ -225,14 +234,38 @@ describe("data backend dispatch (CTF_DATA_BACKEND)", () => {
       ],
       spent: 20,
     });
-    mocks.upstashPipeline.mockResolvedValueOnce([{ result: "Admin hint." }]);
+    dynamoMocks.dynamoGetHintTexts.mockResolvedValueOnce(["Admin hint."]);
     const result = await store.getViewerHints("octocat");
     expect(result).toEqual({
       purchased: { "juice-shop": { "Challenge-5-Admin-Section": "Admin hint." } },
       spent: 20,
       count: 1,
     });
-    expect(mocks.upstashPipeline).toHaveBeenCalledTimes(1); // texts only — no SMEMBERS/HGET spent
+    // Unknown apps are filtered BEFORE hydration, and Upstash is never touched.
+    expect(dynamoMocks.dynamoGetHintTexts).toHaveBeenCalledWith([
+      { app: "juice-shop", id: "Challenge-5-Admin-Section" },
+    ]);
+    expect(mocks.upstashPipeline).not.toHaveBeenCalled();
+  });
+
+  it("dynamo mode serves availability from one pk=HINTS query, filtered to known apps", async () => {
+    const store = await loadStore(true, { backend: "dynamo" });
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    dynamoMocks.dynamoGetHintAvailability.mockResolvedValueOnce({
+      "juice-shop": ["Challenge-1", "Challenge-2"],
+      "not-an-app": ["Challenge-1"], // stale/foreign rows never reach the public shape
+    });
+    expect(await store.getHintAvailability()).toEqual({ "juice-shop": ["Challenge-1", "Challenge-2"] });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("dynamo mode availability degrades to {} when the query fails", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const store = await loadStore(true, { backend: "dynamo" });
+    dynamoMocks.dynamoGetHintAvailability.mockRejectedValueOnce(new Error("dynamo down"));
+    expect(await store.getHintAvailability()).toEqual({});
+    consoleError.mockRestore();
   });
 
   it("dynamo mode serves the leaderboard penalties from DynamoDB", async () => {

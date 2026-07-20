@@ -46,7 +46,7 @@ Copy `.env.example` to `.env.local` and fill in real values — none of these sh
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth app credentials — create one under the org's GitHub settings with callback `<BETTER_AUTH_URL>/api/auth/callback/github` |
 | `LEADERBOARD_SOURCE` | No | `mock` (default) \| `lambda` \| `upstash` — selects the leaderboard data adapter |
 | `LEADERBOARD_API_URL` | Only if `LEADERBOARD_SOURCE=lambda` | Base URL of the scoring API — serves `/leaderboard` (used by the lambda source) and `/challenges` (live challenge catalogue on the challenges page; without it the page shows static fallback cards) |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Only if `LEADERBOARD_SOURCE=upstash`, `TEAM_WRITES_ENABLED=true`, or `HINTS_ENABLED=true` | Upstash Redis REST credentials (leaderboard reads work with a read-only token; team writes and hint purchases need a **read/write** token) |
+| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Only if `LEADERBOARD_SOURCE=upstash`, `TEAM_WRITES_ENABLED=true`, or `HINTS_ENABLED=true` (hints skip this requirement when `CTF_DATA_BACKEND=dynamo`) | Upstash Redis REST credentials (leaderboard reads work with a read-only token; team writes and hint purchases need a **read/write** token) |
 | `TEAM_WRITES_ENABLED` | No | `true` persists team join/create/leave to Upstash Redis; unset uses the per-browser cookie mock |
 | `HINTS_ENABLED` | No | `true` turns on paid hints on `/challenges` (needs the Upstash vars). Leave unset until the event so contestants can't buy hints early |
 | `CTF_DATA_BACKEND` | No | Which store backs team + hint state: `dual` (default) writes Upstash as the source of truth and mirrors into DynamoDB, `upstash` disables the DynamoDB side, `dynamo` makes DynamoDB the only store — see [DynamoDB migration](#dynamodb-migration) |
@@ -152,7 +152,7 @@ Team and hint state is migrating from Upstash to the `ctf-leaderboard` DynamoDB 
 |---|---|---|
 | `dual` (default, incl. unset) | Upstash Lua is the source of truth; every success also runs the equivalent conditional DynamoDB mutation as an awaited best-effort mirror that never throws | Upstash |
 | `upstash` | Upstash only — zero AWS calls | Upstash |
-| `dynamo` | DynamoDB only, with the same rules enforced as conditional transactions (`TransactWriteItems`) | DynamoDB (hint *text* and availability still come from the scorer-seeded Upstash hashes, so the `UPSTASH_REDIS_REST_*` vars stay required for hints) |
+| `dynamo` | DynamoDB only, with the same rules enforced as conditional transactions (`TransactWriteItems`) | DynamoDB — including hint text and availability from `pk=HINTS`, so hints need no `UPSTASH_REDIS_REST_*` vars in this mode (keep the backfill fresh: re-run it after any scorer hint re-seeding) |
 
 In `dual` mode every mirror outcome is logged as `[dynamo-mirror] …` — a `verdict mismatch` line means the two stores disagree. Soak in `dual`, grep those logs clean, then flip to `dynamo`.
 
@@ -164,7 +164,7 @@ pk=USER#<login>   sk=PROFILE            team (absent = no team)
 pk=USER#<login>   sk=HINT#<app>#<id>    one item per hint purchase (the charge-once guard)
 pk=HINTSPEND      sk=AUTHOR#<login>     spent — one Query serves the whole leaderboard
 pk=HINTS          sk=HINT#<app>#<id>    hint text, copied from the scorer-seeded hints:<app>
-                                        hashes by the backfill (not yet read by the app)
+                                        hashes by the backfill (read in dynamo mode)
 ```
 
 **Credentials.** On Vercel there are no stored keys: deployments exchange a Vercel OIDC token for the `ctf-web-dynamodb` IAM role (trust + table policy live in the dc34 repo's `terraform/vercel-aws.tf`; the trust covers production + preview only). Locally the SDK default chain is used instead:
@@ -174,7 +174,7 @@ aws sso login --profile AWSAdministratorAccess-942548380662
 AWS_PROFILE=AWSAdministratorAccess-942548380662 pnpm dev
 ```
 
-**Backfill.** Before enabling the mirror in an environment with existing Upstash data, copy it over once so mirrored joins find their team items: `pnpm backfill:dynamo` (dry run), then `pnpm backfill:dynamo --apply`. Idempotent and read-only against Upstash. It also copies the scorer-seeded `hints:<app>` text hashes into `pk=HINTS`; Upstash remains the authority for hint text, so re-run the backfill after any hint re-seeding.
+**Backfill.** Before enabling the mirror in an environment with existing Upstash data, copy it over once so mirrored joins find their team items: `pnpm backfill:dynamo` (dry run), then `pnpm backfill:dynamo --apply`. Idempotent and read-only against Upstash. It also copies the scorer-seeded `hints:<app>` text hashes into `pk=HINTS`, which `dynamo` mode serves hint text and availability from; Upstash remains the authority for hint text, so re-run the backfill after any hint re-seeding (in `dynamo` mode a stale `pk=HINTS` means new hints simply don't show).
 
 ## Branding
 
