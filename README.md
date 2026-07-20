@@ -49,6 +49,8 @@ Copy `.env.example` to `.env.local` and fill in real values — none of these sh
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Only if `LEADERBOARD_SOURCE=upstash`, `TEAM_WRITES_ENABLED=true`, or `HINTS_ENABLED=true` | Upstash Redis REST credentials (leaderboard reads work with a read-only token; team writes and hint purchases need a **read/write** token) |
 | `TEAM_WRITES_ENABLED` | No | `true` persists team join/create/leave to Upstash Redis; unset uses the per-browser cookie mock |
 | `HINTS_ENABLED` | No | `true` turns on paid hints on `/challenges` (needs the Upstash vars). Leave unset until the event so contestants can't buy hints early |
+| `CTF_DATA_BACKEND` | No | Which store backs team + hint state: `dual` (default) writes Upstash as the source of truth and mirrors into DynamoDB, `upstash` disables the DynamoDB side, `dynamo` makes DynamoDB the only store — see [DynamoDB migration](#dynamodb-migration) |
+| `AWS_REGION` / `AWS_ROLE_ARN` / `CTF_DYNAMO_TABLE` | No | DynamoDB overrides — working defaults are hardcoded in `src/lib/dynamo.ts`, normally leave unset |
 
 > Env var changes on Vercel only take effect on the **next deployment** — redeploy after adding or changing one.
 
@@ -60,7 +62,8 @@ Copy `.env.example` to `.env.local` and fill in real values — none of these sh
 | `pnpm build` | Production build |
 | `pnpm start` | Serve production build |
 | `pnpm lint` | Run ESLint |
-| `pnpm test` | Run the vitest suite (team-store unit tests; the live-Upstash integration tests auto-skip without `UPSTASH_REDIS_REST_*` credentials) |
+| `pnpm test` | Run the vitest suite (team + hint store unit tests; the live-Upstash and live-DynamoDB integration suites auto-skip without `UPSTASH_REDIS_REST_*` credentials / `AWS_PROFILE`) |
+| `pnpm backfill:dynamo` | Copy existing Upstash team/hint state into DynamoDB (dry run; add `--apply` to write) — run once before enabling the mirror in prod |
 
 ## Project Structure
 
@@ -89,9 +92,13 @@ src/
     site.ts                   # Event dates, nav links
     leaderboard/               # Data-source adapters (mock/lambda/upstash) + types
     upstash.ts                 # Shared Upstash Redis REST client (pipeline + EVAL)
-    team-store.ts              # Team reads/writes (Upstash or cookie mock)
-    hint-store.ts              # Paid hint purchases + penalty reads (Upstash)
-    __tests__/                 # vitest: team + hint rules (unit + live-Upstash integration)
+    team-store.ts              # Team reads/writes (backend dispatch, Lua scripts, cookie mock)
+    hint-store.ts              # Paid hint purchases + penalty reads (backend dispatch)
+    dynamo.ts                  # DynamoDB client/config + the CTF_DATA_BACKEND flag
+    dynamo-shapes.ts           # pk/sk builders + item shapes for the shared table
+    dynamo-team-store.ts       # Team rules as conditional DynamoDB transactions
+    dynamo-hint-store.ts       # Hint charge-once + penalty reads on DynamoDB
+    __tests__/                 # vitest: team + hint rules (unit + live integration)
 public/
   owasp-logo.png              # OWASP logo (rendered inverted on dark backgrounds)
 ```
@@ -136,6 +143,36 @@ HINCRBY ctf:hints:spent <login> 10                  # running penalty total
 ```
 
 The scorer's `leaderboard` ZSET is never decremented. Instead, displayed scores subtract the penalty as an overlay (`withHintPenalties`, floored at 0) applied **before** `withTeamStandings`, so leaderboard rows, team totals, and the profile all show the same net numbers. Penalized rows carry a small "−N hints" marker for transparency.
+
+## DynamoDB migration
+
+Team and hint state is migrating from Upstash to the `ctf-leaderboard` DynamoDB table (the same table the dc34 scorer dual-writes solves into). `CTF_DATA_BACKEND` controls the cutover — the four write routes and all consumers are unchanged; only the store layer dispatches:
+
+| Value | Writes | Reads |
+|---|---|---|
+| `dual` (default, incl. unset) | Upstash Lua is the source of truth; every success also runs the equivalent conditional DynamoDB mutation as an awaited best-effort mirror that never throws | Upstash |
+| `upstash` | Upstash only — zero AWS calls | Upstash |
+| `dynamo` | DynamoDB only, with the same rules enforced as conditional transactions (`TransactWriteItems`) | DynamoDB (hint *text* and availability still come from the scorer-seeded Upstash hashes, so the `UPSTASH_REDIS_REST_*` vars stay required for hints) |
+
+In `dual` mode every mirror outcome is logged as `[dynamo-mirror] …` — a `verdict mismatch` line means the two stores disagree. Soak in `dual`, grep those logs clean, then flip to `dynamo`.
+
+Item shapes in the shared table (scorer partitions `LEADERBOARD` / `AUTHOR#<login>` are never touched):
+
+```
+pk=TEAMS          sk=TEAM#<slug>        name, captain, createdAt, members (string set, never empty)
+pk=USER#<login>   sk=PROFILE            team (absent = no team)
+pk=USER#<login>   sk=HINT#<app>#<id>    one item per hint purchase (the charge-once guard)
+pk=HINTSPEND      sk=AUTHOR#<login>     spent — one Query serves the whole leaderboard
+```
+
+**Credentials.** On Vercel there are no stored keys: deployments exchange a Vercel OIDC token for the `ctf-web-dynamodb` IAM role (trust + table policy live in the dc34 repo's `terraform/vercel-aws.tf`; the trust covers production + preview only). Locally the SDK default chain is used instead:
+
+```
+aws sso login --profile AWSAdministratorAccess-942548380662
+AWS_PROFILE=AWSAdministratorAccess-942548380662 pnpm dev
+```
+
+**Backfill.** Before enabling the mirror in an environment with existing Upstash data, copy it over once so mirrored joins find their team items: `pnpm backfill:dynamo` (dry run), then `pnpm backfill:dynamo --apply`. Idempotent and read-only against Upstash.
 
 ## Branding
 
