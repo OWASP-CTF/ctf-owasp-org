@@ -2,7 +2,15 @@ import "server-only";
 import { apps, appsById, type AppId } from "@/lib/apps";
 import { upstashEval, upstashPipeline } from "@/lib/upstash";
 import { DATA_BACKEND } from "@/lib/dynamo";
-import { dynamoChargeHint, dynamoGetHintPenalties, dynamoGetViewerPurchases, mirrorHintCharge } from "@/lib/dynamo-hint-store";
+import {
+  dynamoChargeHint,
+  dynamoGetHintAvailability,
+  dynamoGetHintPenalties,
+  dynamoGetHintText,
+  dynamoGetHintTexts,
+  dynamoGetViewerPurchases,
+  mirrorHintCharge,
+} from "@/lib/dynamo-hint-store";
 
 /**
  * Paid hints. Hint text lives in the scorer-owned hashes `hints:<app>`
@@ -18,9 +26,10 @@ import { dynamoChargeHint, dynamoGetHintPenalties, dynamoGetViewerPurchases, mir
  * CTF_DATA_BACKEND (see lib/dynamo.ts) picks where purchases are recorded:
  * "dual" (default) keeps the Upstash Lua verdict authoritative and mirrors each
  * fresh charge into DynamoDB best-effort; "dynamo" stores purchases and reads
- * penalties from DynamoDB instead. Hint TEXT lives only in the scorer-seeded
- * Upstash hashes, so Upstash creds are required in every mode (hence the
- * HINTS_ENABLED credential check below).
+ * penalties, hint text, and availability from DynamoDB instead (pk=HINTS, kept
+ * in sync from the scorer-seeded Upstash hashes by the backfill — re-run it
+ * after any hint re-seeding). Upstash creds are therefore only required for
+ * hints in the upstash/dual modes; dynamo mode is fully Upstash-free.
  *
  * Callers (the /api/hints route handlers) are responsible for authenticating
  * the session and deriving `login` server-side — nothing here trusts
@@ -32,13 +41,15 @@ import { dynamoChargeHint, dynamoGetHintPenalties, dynamoGetViewerPurchases, mir
 export const HINT_COST = 10;
 
 /** Master switch for paid hints: HINTS_ENABLED=true opts in explicitly (so
- *  hints stay hidden until the event even where Upstash is configured), and
- *  Upstash credentials must be present — the hint text only exists there, so
- *  there is no meaningful mock mode. Revealing writes to Redis, so the token
- *  must be read/write (already required for TEAM_WRITES_ENABLED). */
+ *  hints stay hidden until the event even where the backend is configured).
+ *  In upstash/dual modes the hint text lives only in Upstash, so credentials
+ *  must also be present (read/write — revealing writes to Redis, already
+ *  required for TEAM_WRITES_ENABLED); in dynamo mode everything comes from
+ *  DynamoDB, whose credentials are ambient (Vercel OIDC / the SDK chain). */
 export const HINTS_ENABLED =
   process.env.HINTS_ENABLED === "true" &&
-  Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+  (DATA_BACKEND === "dynamo" ||
+    Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN));
 
 const SPENT_KEY = "ctf:hints:spent";
 const userHintsKey = (login: string) => `ctf:user:${login}:hints`;
@@ -75,14 +86,13 @@ export async function revealHint(login: string, app: string, id: string): Promis
   if (!CHALLENGE_ID_RE.test(id)) return { ok: false, error: "Invalid challenge id" };
 
   if (DATA_BACKEND === "dynamo") {
-    // Hint text lives only in Upstash — read it there, charge in DynamoDB. The
-    // text lookup isn't atomic with the charge (unlike the Lua re-check), which
-    // is fine: hint hashes change rarely and the charge-once guard is what
-    // matters — a hint deleted mid-flight just can't be charged for twice.
+    // Text from pk=HINTS, charge in DynamoDB. The text lookup isn't atomic
+    // with the charge (unlike the Lua re-check), which is fine: hint items
+    // change rarely and the charge-once guard is what matters — a hint deleted
+    // mid-flight just can't be charged for twice.
     let text: string | null = null;
     try {
-      const [res] = await upstashPipeline([["HGET", hintHashKey(app), id]]);
-      text = typeof res.result === "string" && res.result ? res.result : null;
+      text = await dynamoGetHintText(app, id);
     } catch (err) {
       console.error("Hint text lookup failed:", err);
       return { ok: false, error: "Hint reveal failed — try again" };
@@ -154,11 +164,16 @@ export async function getViewerHints(login: string): Promise<ViewerHints> {
 
   const purchased: ViewerHints["purchased"] = {};
   if (owned.length > 0) {
-    const texts = await upstashPipeline(owned.map(({ app, id }) => ["HGET", hintHashKey(app), id]));
+    const texts =
+      DATA_BACKEND === "dynamo"
+        ? await dynamoGetHintTexts(owned)
+        : (await upstashPipeline(owned.map(({ app, id }) => ["HGET", hintHashKey(app), id]))).map(({ result }) =>
+            typeof result === "string" && result ? result : null,
+          );
     owned.forEach(({ app, id }, i) => {
-      const text = texts[i]?.result;
-      // A hint field deleted after purchase just drops out of the reveal list.
-      if (typeof text === "string" && text) (purchased[app] ??= {})[id] = text;
+      const text = texts[i];
+      // A hint deleted after purchase just drops out of the reveal list.
+      if (text) (purchased[app] ??= {})[id] = text;
     });
   }
 
@@ -206,6 +221,18 @@ async function cachedHkeys(key: string): Promise<string[]> {
 export async function getHintAvailability(): Promise<Partial<Record<AppId, string[]>>> {
   if (!HINTS_ENABLED) return {};
   try {
+    if (DATA_BACKEND === "dynamo") {
+      // Unlike the no-store pipeline client, an AWS SDK call isn't a fetch and
+      // can't flip the challenges page to dynamic rendering — it simply runs
+      // each time the (still static) page revalidates.
+      const byApp = await dynamoGetHintAvailability();
+      const availability: Partial<Record<AppId, string[]>> = {};
+      for (const app of apps) {
+        const ids = byApp[app.id];
+        if (ids && ids.length > 0) availability[app.id] = ids;
+      }
+      return availability;
+    }
     const ids = await Promise.all(apps.map((app) => cachedHkeys(hintHashKey(app.id))));
     const availability: Partial<Record<AppId, string[]>> = {};
     apps.forEach((app, i) => {
