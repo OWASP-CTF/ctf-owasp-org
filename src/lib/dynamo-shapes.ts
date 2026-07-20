@@ -11,6 +11,11 @@
 //   pk=HINTSPEND        sk=AUTHOR#<login>       running penalty total (spent N) —
 //                                               one Query serves the leaderboard,
 //                                               like HGETALL ctf:hints:spent
+//   pk=HINTS            sk=HINT#<app>#<id>      hint text, copied from the
+//                                               scorer-seeded hints:<app> hashes
+//                                               by the backfill (Upstash stays
+//                                               the authority — re-backfill
+//                                               after any re-seeding)
 
 import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 
@@ -18,6 +23,7 @@ export type DynamoItem = Record<string, AttributeValue>;
 
 export const TEAMS_PK = "TEAMS";
 export const HINTSPEND_PK = "HINTSPEND";
+export const HINTS_PK = "HINTS";
 export const PROFILE_SK = "PROFILE";
 export const HINT_SK_PREFIX = "HINT#";
 
@@ -72,6 +78,17 @@ export function hintPurchaseItem(args: { login: string; app: string; id: string;
     challengeId: { S: args.id },
     cost: { N: String(args.cost) },
     purchasedAt: { S: args.purchasedAt },
+  };
+}
+
+export function hintTextItem(args: { app: string; id: string; text: string; updatedAt: string }): DynamoItem {
+  return {
+    pk: { S: HINTS_PK },
+    sk: { S: hintSk(args.app, args.id) },
+    app: { S: args.app },
+    challengeId: { S: args.id },
+    text: { S: args.text },
+    updatedAt: { S: args.updatedAt },
   };
 }
 
