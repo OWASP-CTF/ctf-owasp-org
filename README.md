@@ -51,6 +51,8 @@ Copy `.env.example` to `.env.local` and fill in real values — none of these sh
 | `HINTS_ENABLED` | No | `true` turns on paid hints on `/challenges` (needs the Upstash vars). Leave unset until the event so contestants can't buy hints early |
 | `CTF_DATA_BACKEND` | No | Which store backs team + hint state: `dual` (default) writes Upstash as the source of truth and mirrors into DynamoDB, `upstash` disables the DynamoDB side, `dynamo` makes DynamoDB the only store — see [DynamoDB migration](#dynamodb-migration) |
 | `CTF_AWS_REGION` / `AWS_ROLE_ARN` / `CTF_DYNAMO_TABLE` | No | DynamoDB overrides — working defaults are hardcoded in `src/lib/dynamo.ts`, normally leave unset. (`CTF_AWS_REGION` on purpose, not `AWS_REGION` — Vercel injects the latter with the function's own execution region) |
+| `CHALLENGES_GATE_ENABLED` | No | `true` locks `/challenges` behind the pre-event password gate — see [Pre-event challenges gate](#pre-event-challenges-gate) |
+| `CHALLENGES_GATE_PASSWORD` | Only if `CHALLENGES_GATE_ENABLED=true` | The shared access password. Server-side only; the gate stays open if this is unset |
 
 > Env var changes on Vercel only take effect on the **next deployment** — redeploy after adding or changing one.
 
@@ -143,6 +145,16 @@ HINCRBY ctf:hints:spent <login> 10                  # running penalty total
 ```
 
 The scorer's `leaderboard` ZSET is never decremented. Instead, displayed scores subtract the penalty as an overlay (`withHintPenalties`, floored at 0) applied **before** `withTeamStandings`, so leaderboard rows, team totals, and the profile all show the same net numbers. Penalized rows carry a small "−N hints" marker for transparency.
+
+## Pre-event challenges gate
+
+Until the conference starts, `/challenges` can be locked behind a shared password: set `CHALLENGES_GATE_ENABLED=true` and `CHALLENGES_GATE_PASSWORD` (both, plus the always-required `BETTER_AUTH_SECRET`, which signs the unlock cookie). A half-configured gate (flag without password) stays open rather than locking everyone out. Only the challenge board is gated; the leaderboard, rules, and the rest of the site stay public, and the homepage keeps showing catalogue totals.
+
+How it works: the proxy (`src/proxy.ts`) redirects visitors without a valid signed cookie to `/gate`, which POSTs the password to `/api/gate`. Verification is entirely server-side (constant-time compare; the password never reaches the client bundle), and success sets an HMAC-signed, httpOnly cookie good for 30 days.
+
+Brute-force throttle: five wrong attempts from one IP lock that IP for 24 hours (`pk=GATE` items in the DynamoDB table; the lock window is enforced in code since the table has no TTL). Locked attempts are rejected before the password is even compared, so the right password won't unlock a locked IP either. Caveat: everyone behind one NAT (an office, a hotel) shares an IP — five collective failures lock them all. If DynamoDB is unreachable the gate fails closed.
+
+Rollout: set the two env vars in Vercel and redeploy. At conference start, flip `CHALLENGES_GATE_ENABLED` to `false` (or remove it) and redeploy — outstanding unlock cookies become inert. Rotating the password is the same edit + redeploy; cookies issued earlier stay valid because they are signed by `BETTER_AUTH_SECRET`, not the password.
 
 ## DynamoDB migration
 

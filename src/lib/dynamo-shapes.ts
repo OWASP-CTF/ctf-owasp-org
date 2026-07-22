@@ -16,6 +16,10 @@
 //                                               by the backfill (Upstash stays
 //                                               the authority — re-backfill
 //                                               after any re-seeding)
+//   pk=GATE             sk=IP#<ip>              challenges-gate brute-force
+//                                               throttle (failures N, lastFailAt
+//                                               N epoch-ms; the table has no TTL —
+//                                               expiry is enforced on read)
 
 import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 
@@ -24,6 +28,7 @@ export type DynamoItem = Record<string, AttributeValue>;
 export const TEAMS_PK = "TEAMS";
 export const HINTSPEND_PK = "HINTSPEND";
 export const HINTS_PK = "HINTS";
+export const GATE_PK = "GATE";
 export const PROFILE_SK = "PROFILE";
 export const HINT_SK_PREFIX = "HINT#";
 
@@ -31,6 +36,7 @@ export const teamSk = (slug: string) => `TEAM#${slug}`;
 export const userPk = (login: string) => `USER#${login}`;
 export const hintSk = (app: string, id: string) => `${HINT_SK_PREFIX}${app}#${id}`;
 export const spendSk = (login: string) => `AUTHOR#${login}`;
+export const gateSk = (ip: string) => `IP#${ip}`;
 
 export const getS = (item: DynamoItem | undefined, name: string): string | null => {
   const value = item?.[name]?.S;
