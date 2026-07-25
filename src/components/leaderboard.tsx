@@ -9,6 +9,7 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { apps as appList } from "@/lib/apps";
 import type { LeaderboardData, LeaderboardEntry, TeamStanding } from "@/lib/leaderboard/types";
 
@@ -251,6 +252,62 @@ function TeamRow({ team, topPoints, isOpen, onToggle }: { team: TeamStanding; to
   );
 }
 
+/** Shown when the board holds no contestants at all (pre-event, or after a
+ *  reset) — distinct from a search that simply matched nothing. The framing is
+ *  deliberately an invitation rather than an error: the podium is drawn empty
+ *  and the copy points at the challenges. */
+function EmptyBoard() {
+  return (
+    <div className="flex flex-col items-center gap-5 rounded-lg border border-white/[0.06] bg-[#16162a] px-6 py-10 text-center">
+      <Image
+        src="/leaderboard-empty.svg"
+        alt="An empty winners' podium with an unclaimed flag on the top step"
+        width={420}
+        height={260}
+        className="h-auto w-full max-w-[420px]"
+        priority={false}
+        unoptimized
+      />
+      <div className="flex flex-col gap-2">
+        <h2 className="text-2xl font-bold uppercase tracking-widest text-white">
+          The board is wide open
+        </h2>
+        <p className="mx-auto max-w-md text-sm text-zinc-400">
+          No flags captured yet. Every rank is unclaimed — patch your first challenge and
+          you&rsquo;ll be the one everyone else is chasing.
+        </p>
+      </div>
+      <Link
+        href="/challenges"
+        className="rounded-md border border-[#2563eb]/60 bg-[#2563eb]/10 px-4 py-2 font-mono text-sm text-[#2563eb] transition-colors hover:bg-[#2563eb]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+      >
+        $ pick a challenge
+      </Link>
+    </div>
+  );
+}
+
+/** Shown when the board has contestants but the query matched none of them.
+ *  Always offers the way out (clearing the search) rather than dead-ending. */
+function NoMatch({ noun, query, onClear }: { noun: string; query: string; onClear: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-lg border border-white/[0.06] bg-[#16162a] px-5 py-10 text-center">
+      <p className="text-base text-zinc-300">
+        No {noun} matching <span className="font-mono text-white">&ldquo;{query}&rdquo;</span> on the
+        board yet.
+      </p>
+      <p className="text-sm text-zinc-500">Double-check the spelling, or take another look at everyone.</p>
+      <button
+        type="button"
+        onClick={onClear}
+        className="mt-1 rounded-md border border-white/10 px-3 py-1.5 font-mono text-xs text-zinc-300 transition-colors hover:border-[#2563eb]/60 hover:text-[#2563eb] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+      >
+        $ clear search
+      </button>
+    </div>
+  );
+}
+
 export default function Leaderboard({
   data,
   viewerLogin,
@@ -291,10 +348,15 @@ export default function Leaderboard({
   }, [data.teams, query]);
 
   const showTeamsToggle = data.capabilities.teams && data.teams.length > 0;
+  /** Nothing to search, sort, or count — suppress the chrome so the empty
+   *  state stands alone. Teams can exist before anyone has solved anything, so
+   *  this checks both collections rather than just `entries`. */
+  const boardIsEmpty = data.entries.length === 0 && data.teams.length === 0;
 
   return (
     <div className="flex flex-col gap-5">
       {/* Controls */}
+      {!boardIsEmpty && (
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
           <svg
@@ -334,8 +396,9 @@ export default function Leaderboard({
           </div>
         )}
       </div>
+      )}
 
-      {view === "individual" && (
+      {view === "individual" && data.entries.length > 0 && (
         <div className="flex items-center gap-4 px-1 text-xs uppercase tracking-wider text-zinc-500">
           <span>Sort:</span>
           {(["rank", "points", "patched"] as SortKey[]).map((key) => (
@@ -354,10 +417,10 @@ export default function Leaderboard({
       )}
 
       {view === "individual" ? (
-        visibleEntries.length === 0 ? (
-          <p className="rounded-lg border border-white/[0.06] bg-[#16162a] px-5 py-8 text-center text-sm text-zinc-500">
-            No contestants match <span className="text-zinc-300">&ldquo;{query}&rdquo;</span>.
-          </p>
+        data.entries.length === 0 ? (
+          <EmptyBoard />
+        ) : visibleEntries.length === 0 ? (
+          <NoMatch noun="contestants" query={query.trim()} onClear={() => setQuery("")} />
         ) : (
           <ul className="flex flex-col gap-2.5">
             {visibleEntries.map((entry) => (
@@ -374,9 +437,7 @@ export default function Leaderboard({
           </ul>
         )
       ) : visibleTeams.length === 0 ? (
-        <p className="rounded-lg border border-white/[0.06] bg-[#16162a] px-5 py-8 text-center text-sm text-zinc-500">
-          No teams match <span className="text-zinc-300">&ldquo;{query}&rdquo;</span>.
-        </p>
+        <NoMatch noun="teams" query={query.trim()} onClear={() => setQuery("")} />
       ) : (
         <ul className="flex flex-col gap-2.5">
           {visibleTeams.map((team) => (
@@ -391,12 +452,14 @@ export default function Leaderboard({
         </ul>
       )}
 
-      <p className="px-1 text-xs text-zinc-600">
-        {view === "individual"
-          ? `Showing ${visibleEntries.length} of ${data.entries.length} contestants`
-          : `Showing ${visibleTeams.length} of ${data.teams.length} teams`}
-        {" · click a row for the breakdown"}
-      </p>
+      {!boardIsEmpty && (
+        <p className="px-1 text-xs text-zinc-600">
+          {view === "individual"
+            ? `Showing ${visibleEntries.length} of ${data.entries.length} contestants`
+            : `Showing ${visibleTeams.length} of ${data.teams.length} teams`}
+          {" · click a row for the breakdown"}
+        </p>
+      )}
     </div>
   );
 }

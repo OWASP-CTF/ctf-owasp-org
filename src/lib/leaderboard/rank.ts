@@ -1,11 +1,17 @@
 import type { LeaderboardEntry } from "./types";
 
-/** Standing order: points descending, then point ties break on lastSolveAt —
- *  whoever reached the score first (earlier last solve) ranks higher. Entries
- *  without a parseable solve time sort after those with one, so remaining
- *  ties fall through to the caller's stable ordering. */
+/** Standing order, most significant first:
+ *
+ *    1. challenges solved (`patched`) descending — the board rewards BREADTH of
+ *       solving above all else, so clearing more challenges always outranks
+ *       clearing fewer high-value ones;
+ *    2. total points descending — breaks solve-count ties on difficulty;
+ *    3. lastSolveAt ascending — whoever reached that score first ranks higher.
+ *
+ *  Entries without a parseable solve time sort after those with one, so
+ *  remaining ties fall through to the caller's stable ordering. */
 export function compareStanding(a: LeaderboardEntry, b: LeaderboardEntry): number {
-  return b.points - a.points || solveMs(a) - solveMs(b);
+  return b.patched - a.patched || b.points - a.points || solveMs(a) - solveMs(b);
 }
 
 function solveMs(entry: LeaderboardEntry): number {
