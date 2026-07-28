@@ -38,7 +38,8 @@ glow/float motion.
 ### Accents
 | Token | Hex | Role |
 |-------|-----|------|
-| `--accent-blue` | `#2563eb` | **Primary brand** — title accent, cursor, dividers, links |
+| `--accent-blue` | `#2563eb` | **Primary brand** — title accent, cursor, dividers, borders, large/bold accents |
+| `--accent-blue-link` | `#60a5fa` | **Inline text links.** `--accent-blue` is only 3.3:1 on `--background`, under the WCAG AA 4.5:1 floor for body-size text; this step is 6.7:1. Use it for any link rendered at body size. |
 | `--accent-teal` | `#14b8a6` | Secondary — eyebrow/subtitle text, "people" icon |
 | `--accent-green` | `#22c55e` | Success / terminal prompt (`$`) |
 | `--accent-yellow` | `#d4a017` | Warning / "shield" icon |

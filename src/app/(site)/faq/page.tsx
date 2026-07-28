@@ -24,7 +24,7 @@ const faqs: QA[] = [
   },
   {
     q: "What do I need to bring?",
-    a: "Your own laptop with the dev tools you like to work in, a GitHub account, and a charger (outlets go fast). You'll run the target apps and your fixes locally, then push a PR.",
+    a: "Your own laptop with the dev tools you like to work in, a GitHub account, and a charger (outlets go fast). Everything else runs in your fork and in CI.",
   },
   {
     q: "How do I submit a solution?",
@@ -36,7 +36,7 @@ const faqs: QA[] = [
         the only branch the scorer watches, and there is no per-challenge branch. A GitHub Action
         builds your app, runs the rubric, and posts your score on the PR, usually in two to five
         minutes. See{" "}
-        <Link href="/how-to-play" className="text-[#2563eb] hover:underline">
+        <Link href="/how-to-play" className="text-[var(--accent-blue-link)] hover:underline">
           How to Play
         </Link>{" "}
         for a worked example.
@@ -80,7 +80,7 @@ const faqs: QA[] = [
           href={event.discordUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[#2563eb] hover:underline"
+          className="text-[var(--accent-blue-link)] hover:underline"
         >
           CTF Discord
         </a>{" "}
@@ -98,7 +98,7 @@ const faqs: QA[] = [
           href={event.hackerTrackerUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[#2563eb] hover:underline"
+          className="text-[var(--accent-blue-link)] hover:underline"
         >
           HackerTracker
         </a>
@@ -114,7 +114,7 @@ export default function FaqPage() {
       <PageHeader
         eyebrow="Questions"
         title="FAQ"
-        description="Quick answers to the things contestants ask most. Still stuck? Find an organizer at the OWASP CTF area."
+        description="Quick answers to the things contestants ask most. Still stuck? Ask in the CTF Discord or find an organizer at the OWASP CTF area."
       />
       <FaqAccordion items={faqs} />
     </div>
