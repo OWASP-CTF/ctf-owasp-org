@@ -12,6 +12,9 @@ export const event = {
   // Full DEF CON schedule (talks, villages, timing) lives in HackerTracker,
   // not on this site — we only own CTF-specific content.
   hackerTrackerUrl: "https://hackertracker.app",
+  // Live contestant support during the event: scoring questions, stuck runs,
+  // organizer announcements.
+  discordUrl: "https://discord.gg/tgyeuaxmWm",
 } as const;
 
 export type NavLink = { href: string; label: string };
