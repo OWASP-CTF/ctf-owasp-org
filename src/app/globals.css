@@ -4,6 +4,11 @@
   --background: #1a1a2e;
   --foreground: #d4d4d8;
   --accent-blue: #2563eb;
+  /* Accent blue is a chrome/brand colour: at 3.3:1 on --background it is fine
+     for borders, bars, and large or bold accents, but it fails WCAG AA (4.5:1)
+     for body-size text. Inline text links use this lighter step instead —
+     6.7:1 on --background, same hue family. */
+  --accent-blue-link: #60a5fa;
   --accent-green: #22c55e;
   --accent-red: #e53e3e;
   --accent-yellow: #d4a017;
