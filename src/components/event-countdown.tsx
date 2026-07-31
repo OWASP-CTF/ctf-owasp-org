@@ -85,7 +85,7 @@ export default function EventCountdown({
             <span className="text-sm font-bold tabular-nums text-white">
               {String(display[key]).padStart(2, "0")}
             </span>
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</span>
+            <span className="text-[10px] uppercase tracking-wide text-muted">{label}</span>
             {i < UNITS.length - 1 && <span className="text-zinc-600">&middot;</span>}
           </span>
         ))}
@@ -95,7 +95,7 @@ export default function EventCountdown({
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <p className="text-xs font-medium uppercase tracking-[0.25em] text-zinc-500">
+      <p className="text-xs font-medium uppercase tracking-[0.25em] text-muted">
         {mounted ? "CTF opens in" : "CTF opens"}
       </p>
       <div className="flex items-center gap-2.5 sm:gap-3">
@@ -107,7 +107,7 @@ export default function EventCountdown({
             <span className="font-mono text-xl font-bold tabular-nums text-white sm:text-2xl">
               {String(display[key]).padStart(2, "0")}
             </span>
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">{label}</span>
+            <span className="text-[10px] uppercase tracking-wide text-muted">{label}</span>
           </div>
         ))}
       </div>

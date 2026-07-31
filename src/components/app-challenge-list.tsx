@@ -47,11 +47,11 @@ export default function AppChallengeList({ challenges }: { challenges: Challenge
                 />
                 <span className="min-w-0 flex-1 truncate text-zinc-300">{c.name}</span>
                 {c.owasp && (
-                  <span className="flex-none rounded border border-white/10 px-1 text-[10px] text-zinc-500">
+                  <span className="flex-none rounded border border-white/10 px-1 text-[10px] text-muted">
                     {c.owasp}
                   </span>
                 )}
-                <span className="flex-none font-mono text-[10px] text-zinc-500">{c.points}pt</span>
+                <span className="flex-none font-mono text-[10px] text-muted">{c.points}pt</span>
                 <span className="w-20 flex-none text-right text-[10px] uppercase tracking-wide" style={{ color: style.dot }}>
                   {style.label}
                 </span>

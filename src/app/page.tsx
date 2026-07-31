@@ -13,7 +13,7 @@ const STEPS = [
   },
   {
     title: "Find the vulnerability",
-    body: "Work through the OWASP Top 10 (Web and API) to identify a real flaw in the target's source. Use AI tooling to speed up analysis if you like.",
+    body: "Work through the OWASP Top 10 (Web and API) to identify a real flaw in the target's source. Please use AI — point an agent at the codebase. That's the workflow this event is built to teach.",
   },
   {
     title: "Patch it and open a PR",
@@ -132,6 +132,14 @@ export default async function Home() {
             >
               Live leaderboard
             </Link>
+            <a
+              href={event.discordUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-md border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
+            >
+              Join the Discord
+            </a>
           </div>
 
           <p className="max-w-2xl text-balance text-base leading-relaxed text-zinc-400">
@@ -170,7 +178,7 @@ export default async function Home() {
                 key={step.title}
                 className="ds-card flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#16162a] p-5"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[#2563eb]/40 bg-[#2563eb]/10 font-mono text-sm font-bold tabular-nums text-[#2563eb]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-[#2563eb]/40 bg-[#2563eb]/10 font-mono text-sm font-bold tabular-nums text-[var(--accent-blue-link)]">
                   {i + 1}
                 </span>
                 <h3 className="font-semibold text-white">{step.title}</h3>
@@ -178,6 +186,56 @@ export default async function Home() {
               </li>
             ))}
           </ol>
+        </section>
+
+        {/* Bring an AI agent. This is the event's actual thesis, so it gets its
+            own section rather than a line inside the steps. */}
+        <section className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <p className="text-xs font-medium uppercase tracking-[0.25em] text-[#14b8a6]">
+              Bring your agent
+            </p>
+            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              Please use AI
+            </h2>
+            <p className="max-w-2xl text-base leading-relaxed text-zinc-400">
+              This isn&rsquo;t tolerated, it&rsquo;s the point. Reviewing code, finding the flaw,
+              and writing the patch with an AI agent is the skill this event exists to build.
+              Bring whatever you already use &mdash; Claude Code, Copilot, Cursor, your own
+              harness &mdash; and let it read the target.
+            </p>
+            <div className="mt-1 h-px w-full bg-gradient-to-r from-[#2563eb]/40 via-white/[0.06] to-transparent" />
+          </div>
+
+          <div className="ds-card flex flex-col gap-4 rounded-lg border border-white/[0.06] bg-[#16162a] p-6">
+            <h3 className="text-lg font-semibold text-white">
+              Start with the OWASP Secure Agent Playbook
+            </h3>
+            <p className="max-w-3xl text-sm leading-relaxed text-zinc-400">
+              OWASP&rsquo;s own open-source playbook for pointing an AI agent at a codebase. It
+              ships structured, OWASP-grounded procedures for security code review, dependency
+              and secrets scanning, and API and web assessment &mdash; each one mapped to the
+              same OWASP Top 10 categories these challenges are graded against. It turns
+              &ldquo;find the bug&rdquo; into a repeatable method, which is exactly what you want
+              against 300-plus challenges on a deadline.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href={event.secureAgentPlaybookUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-md bg-[#2563eb] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2563eb]/90"
+              >
+                Get the playbook
+              </a>
+              <Link
+                href="/how-to-play"
+                className="rounded-md border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm text-zinc-300 transition-colors hover:border-white/20 hover:text-white"
+              >
+                See it in a worked example
+              </Link>
+            </div>
+          </div>
         </section>
 
         {/* Targets */}
@@ -215,7 +273,7 @@ export default async function Home() {
                         <path d={app.icon} />
                       </svg>
                     </span>
-                    <span className="font-mono text-xs tabular-nums text-zinc-500">
+                    <span className="font-mono text-xs tabular-nums text-muted">
                       {catalog?.byApp[app.id]?.length ?? app.challengeCount} challenges
                     </span>
                   </div>

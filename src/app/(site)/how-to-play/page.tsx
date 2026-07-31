@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import PageHeader from "@/components/page-header";
+import { event } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "How to Play · OWASP CTF @ DEF CON 34",
@@ -22,7 +23,7 @@ const steps = [
   },
   {
     title: "Find the vulnerability",
-    body: "Work the target like a real audit: read the source, exercise the app, and identify the OWASP Top 10 flaw behind the challenge. Using AI tools to help analyze and remediate is part of the intended workflow, so use them if it helps.",
+    body: "Work the target like a real audit: read the source, exercise the app, and identify the OWASP Top 10 flaw behind the challenge. Please use AI here — point an agent at the codebase and have it do the analysis and draft the remediation. That's the intended workflow, not a shortcut around it.",
   },
   {
     title: "Patch it and open a pull request",
@@ -119,7 +120,7 @@ export default function HowToPlayPage() {
 
       {/* Workflow callout */}
       <div className="rounded-lg border border-[#2563eb]/30 bg-[#2563eb]/[0.06] p-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-[#2563eb]">The loop</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-[var(--accent-blue-link)]">The loop</p>
         <p className="mt-2 font-mono text-sm text-zinc-300">
           find the flaw <span className="text-zinc-600">→</span> patch it{" "}
           <span className="text-zinc-600">→</span> open a PR{" "}
@@ -131,6 +132,31 @@ export default function HowToPlayPage() {
         </p>
       </div>
 
+      {/* AI callout. Sits above the steps because it changes how you do step 4,
+          and contestants who skim only the numbered list still see it. */}
+      <div className="rounded-lg border border-[#14b8a6]/30 bg-[#14b8a6]/[0.06] p-5">
+        <p className="text-xs font-medium uppercase tracking-wider text-[#14b8a6]">
+          Please use AI
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+          Solving these with an AI agent is the intended path, not a loophole. Bring whatever you
+          already use and let it read the target. The fastest way to get a useful result is
+          OWASP&rsquo;s own{" "}
+          <a
+            href={event.secureAgentPlaybookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ds-link"
+          >
+            Secure Agent Playbook
+          </a>{" "}
+          &mdash; structured, OWASP-grounded procedures for security code review, dependency and
+          secrets scanning, and API assessment, mapped to the same Top 10 categories these
+          challenges are graded against. Point it at your fork before you start reading files by
+          hand.
+        </p>
+      </div>
+
       {/* Numbered steps */}
       <ol className="flex flex-col gap-4">
         {steps.map((step, i) => (
@@ -138,11 +164,11 @@ export default function HowToPlayPage() {
             key={step.title}
             className="flex gap-4 rounded-lg border border-white/[0.06] bg-[#16162a] p-5"
           >
-            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-[#2563eb]/40 bg-[#2563eb]/10 font-mono text-sm font-bold tabular-nums text-[#2563eb]">
+            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full border border-[#2563eb]/40 bg-[#2563eb]/10 font-mono text-sm font-bold tabular-nums text-[var(--accent-blue-link)]">
               {i + 1}
             </span>
             <div>
-              <h3 className="font-semibold text-white">{step.title}</h3>
+              <h2 className="font-semibold text-white">{step.title}</h2>
               <p className="mt-1 text-sm leading-relaxed text-zinc-400">{step.body}</p>
             </div>
           </li>
@@ -200,7 +226,7 @@ export default function HowToPlayPage() {
 
       {/* Good-to-know */}
       <div className="flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#16162a] p-5">
-        <h3 className="font-semibold text-white">Good to know</h3>
+        <h2 className="font-semibold text-white">Good to know</h2>
         <ul className="flex list-disc flex-col gap-2 pl-5 text-sm leading-relaxed text-zinc-400">
           <li>
             Every push to an open PR re-runs the scorer, and the run evaluates your whole app, so
@@ -220,7 +246,7 @@ export default function HowToPlayPage() {
 
       {/* Scoring note */}
       <div className="flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#16162a] p-5">
-        <h3 className="font-semibold text-white">How scoring works</h3>
+        <h2 className="font-semibold text-white">How scoring works</h2>
         <p className="text-sm leading-relaxed text-zinc-400">
           Every challenge is worth a fixed number of points based on difficulty, and harder
           vulnerabilities pay out more. Points are awarded the moment your PR&rsquo;s regression
@@ -231,7 +257,7 @@ export default function HowToPlayPage() {
         <div className="flex flex-wrap gap-3 pt-1">
           <Link
             href="/challenges"
-            className="rounded-md border border-[#2563eb] bg-[#2563eb]/10 px-4 py-2 text-sm font-medium text-[#2563eb] transition-colors hover:bg-[#2563eb]/20"
+            className="rounded-md border border-[#2563eb] bg-[#2563eb]/10 px-4 py-2 text-sm font-medium text-[var(--accent-blue-link)] transition-colors hover:bg-[#2563eb]/20"
           >
             Browse challenges
           </Link>
@@ -249,6 +275,19 @@ export default function HowToPlayPage() {
           </Link>
         </div>
       </div>
+
+      <p className="text-sm leading-relaxed text-muted">
+        Stuck, or need an organizer? Find one at the OWASP CTF area, or ask in the{" "}
+        <a
+          href={event.discordUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ds-link"
+        >
+          CTF Discord
+        </a>
+        .
+      </p>
     </div>
   );
 }

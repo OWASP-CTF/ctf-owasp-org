@@ -90,27 +90,27 @@ export default async function ProfilePage() {
         <div className="flex flex-none gap-6 text-right">
           <div>
             <p className="font-mono text-xl font-bold tabular-nums text-white">{netPoints}</p>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">points</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted">points</p>
           </div>
           {viewerHints.count > 0 && (
             <div>
               <p className="font-mono text-xl tabular-nums text-[#d4a017]">−{viewerHints.spent}</p>
-              <p className="text-[11px] uppercase tracking-wide text-zinc-500">
+              <p className="text-[11px] uppercase tracking-wide text-muted">
                 hints ({viewerHints.count})
               </p>
             </div>
           )}
           <div>
             <p className="font-mono text-xl tabular-nums text-[#22c55e]">{profile?.patched ?? 0}</p>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">patched</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted">patched</p>
           </div>
           <div>
             <p className="font-mono text-xl tabular-nums text-zinc-300">{nonPatched}</p>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">non-patched</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted">non-patched</p>
           </div>
           <div>
             <p className="font-mono text-xl tabular-nums text-zinc-400">{profile?.total ?? 0}</p>
-            <p className="text-[11px] uppercase tracking-wide text-zinc-500">total</p>
+            <p className="text-[11px] uppercase tracking-wide text-muted">total</p>
           </div>
         </div>
       </div>
@@ -120,7 +120,7 @@ export default async function ProfilePage() {
       {!profile || profile.apps.length === 0 ? (
         <div className="ds-card rounded-lg border border-white/[0.06] bg-[#16162a] px-5 py-10 text-center">
           <p className="text-sm text-zinc-400">No scored PRs yet. Submit a patch to start earning points.</p>
-          <Link href="/how-to-play" className="mt-3 inline-block text-sm text-[var(--accent-blue-link)] hover:underline">
+          <Link href="/how-to-play" className="mt-3 inline-block text-sm ds-link">
             How to play →
           </Link>
         </div>
@@ -141,7 +141,7 @@ export default async function ProfilePage() {
                   {app.maxPoints > 0 && (
                     <p className="font-mono text-sm text-zinc-400">
                       {app.points}
-                      <span className="text-zinc-600"> / {app.maxPoints} pts</span>
+                      <span className="text-muted"> / {app.maxPoints} pts</span>
                     </p>
                   )}
                 </div>
@@ -151,7 +151,7 @@ export default async function ProfilePage() {
                     style={{ width: `${app.total > 0 ? (app.patched / app.total) * 100 : 0}%`, background: meta.accent }}
                   />
                 </div>
-                <p className="mt-1.5 text-xs text-zinc-500">
+                <p className="mt-1.5 text-xs text-muted">
                   {app.patched} / {app.total} patched
                 </p>
                 {app.challenges && app.challenges.length > 0 && <AppChallengeList challenges={app.challenges} />}

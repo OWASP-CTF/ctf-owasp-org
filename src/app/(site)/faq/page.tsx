@@ -32,11 +32,11 @@ const faqs: QA[] = [
       <>
         There&apos;s no flag to type in. Fork the target&apos;s repo under the OWASP-CTF org, fix
         the vulnerability on a branch in your fork, and open a pull request against the
-        repo&apos;s <code className="font-mono text-zinc-200">dc34-ctf</code> branch — that&apos;s
-        the only branch the scorer watches, and there is no per-challenge branch. A GitHub Action
-        builds your app, runs the rubric, and posts your score on the PR, usually in two to five
-        minutes. See{" "}
-        <Link href="/how-to-play" className="text-[var(--accent-blue-link)] hover:underline">
+        repo&apos;s <code className="font-mono text-zinc-200">dc34-ctf</code>{" "}
+        branch — that&apos;s the only branch the scorer watches, and there is no per-challenge
+        branch. A GitHub Action builds your app, runs the rubric, and posts your score on the
+        PR, usually in two to five minutes. See{" "}
+        <Link href="/how-to-play" className="ds-link">
           How to Play
         </Link>{" "}
         for a worked example.
@@ -49,7 +49,25 @@ const faqs: QA[] = [
   },
   {
     q: "Can I use AI tools to help?",
-    a: "Yes. Using AI to assist with vulnerability analysis and remediation is part of the intended skillset this event is built around, not something to hide.",
+    a: (
+      <>
+        Yes — <span className="text-zinc-200">please do</span>. Using AI to analyze and remediate
+        these vulnerabilities is the skillset this event is built around, not something to hide
+        or work around. Bring whatever you already use, and point it at your fork. OWASP&apos;s
+        own{" "}
+        <a
+          href={event.secureAgentPlaybookUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ds-link"
+        >
+          Secure Agent Playbook
+        </a>{" "}
+        will get you further faster — it gives an agent structured, OWASP-grounded procedures for
+        code review, dependency and secrets scanning, and API assessment, mapped to the same Top
+        10 categories these challenges are graded against.
+      </>
+    ),
   },
   {
     q: "How is my progress tracked?",
@@ -80,7 +98,7 @@ const faqs: QA[] = [
           href={event.discordUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[var(--accent-blue-link)] hover:underline"
+          className="ds-link"
         >
           CTF Discord
         </a>{" "}
@@ -98,7 +116,7 @@ const faqs: QA[] = [
           href={event.hackerTrackerUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[var(--accent-blue-link)] hover:underline"
+          className="ds-link"
         >
           HackerTracker
         </a>
@@ -114,7 +132,20 @@ export default function FaqPage() {
       <PageHeader
         eyebrow="Questions"
         title="FAQ"
-        description="Quick answers to the things contestants ask most. Still stuck? Ask in the CTF Discord or find an organizer at the OWASP CTF area."
+        description={
+          <>
+            Quick answers to the things contestants ask most. Still stuck? Ask in the{" "}
+            <a
+              href={event.discordUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ds-link"
+            >
+              CTF Discord
+            </a>{" "}
+            or find an organizer at the OWASP CTF area.
+          </>
+        }
       />
       <FaqAccordion items={faqs} />
     </div>
