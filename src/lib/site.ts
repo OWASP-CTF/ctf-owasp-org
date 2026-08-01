@@ -13,12 +13,11 @@ export const event = {
   // not on this site — we only own CTF-specific content.
   hackerTrackerUrl: "https://hackertracker.app",
   // Live contestant support during the event: scoring questions, stuck runs,
-  // organizer announcements.
-  //
-  // TODO(pre-event): this invite currently resolves to the `ctf_admin` channel.
-  // It must be replaced with one pointing at a public contestant channel before
-  // this ships — the header, hero, rules, and how-to-play all funnel here now.
-  discordUrl: "https://discord.gg/tgyeuaxmWm",
+  // organizer announcements. Resolves to the public #general channel and never
+  // expires. If this is ever reissued, check the target channel first — the
+  // header, hero, rules, how-to-play, 404, and FAQ all funnel contestants here,
+  // and a previous invite pointed at an organizers-only channel.
+  discordUrl: "https://discord.gg/UV63TUea8d",
   // OWASP's own project: OWASP-grounded procedures an AI agent follows to do
   // security engineering work. The recommended way to point an agent at a target.
   secureAgentPlaybookUrl: "https://github.com/OWASP/secure-agent-playbook",
