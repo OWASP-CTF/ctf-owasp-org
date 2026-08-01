@@ -30,7 +30,7 @@ const sections: { heading: string; items: React.ReactNode[] }[] = [
     heading: "Eligibility",
     items: [
       "This is an in-person competition at the Las Vegas Convention Center. You need a valid DEF CON 34 badge to take part and to claim a prize.",
-      "You need a GitHub account. Your GitHub login is your identity for scoring, so open every pull request from the account you sign in with — points are credited to the PR author and cannot be moved between accounts afterwards.",
+      "You need a GitHub account. Your GitHub login is your identity for scoring, so open every pull request from the account you sign in with. Points are credited to the PR author and cannot be moved between accounts afterwards.",
       "Organizers and anyone who worked on the challenge targets, the scorer, or the rubric may compete for fun but are not eligible for prizes.",
     ],
   },
@@ -39,7 +39,7 @@ const sections: { heading: string; items: React.ReactNode[] }[] = [
     items: [
       "Your authorization to test covers the six challenge targets only: Juice Shop, DVWA, WebGoat, Security Shepherd, VulnerableApp, and VAmPI, in your own fork under the OWASP-CTF organization.",
       "Explicitly out of scope: the CI scoring pipeline, the leaderboard, this website, the CTF Discord, the venue network, and other contestants' accounts, forks, or machines. Testing any of those is not authorized by this event, and nothing here should be read as permission to do so.",
-      "Found a real vulnerability in the scorer or this site? That is genuinely useful — report it to an organizer rather than exploiting it. Doing so will not cost you anything.",
+      "Found a real vulnerability in the scorer or this site? That is genuinely useful. Report it to an organizer rather than exploiting it. Doing so will not cost you anything.",
       "Automated mass-submission, or spamming pull requests to farm scoring runs, will get your account rate-limited or disqualified.",
     ],
   },
@@ -47,7 +47,7 @@ const sections: { heading: string; items: React.ReactNode[] }[] = [
     heading: "Your submissions",
     items: [
       "You submit work as a pull request against the target repository's dc34-ctf branch. Those repositories are OWASP projects under their own existing open-source licenses, and your contribution is offered under the license of the repository you are contributing to.",
-      "Submit your own work. Using AI tooling to find and fix vulnerabilities is expected and encouraged here — see the Rules — but passing off another contestant's patch as yours is not.",
+      "Submit your own work. Using AI tooling to find and fix vulnerabilities is expected and encouraged here (see the Rules), but passing off another contestant's patch as yours is not.",
       "Don't publish full solutions or patches for others to copy while the event is running. Afterwards, write up whatever you like.",
       "Organizers may reference or showcase submitted patches when talking about the event.",
     ],
@@ -56,7 +56,7 @@ const sections: { heading: string; items: React.ReactNode[] }[] = [
     heading: "Scoring and prizes",
     items: [
       "Each challenge is worth a fixed point value based on difficulty, awarded automatically when that challenge's regression test passes against your patched app. Your best-ever result per challenge counts.",
-      "Revealing a hint deducts points from your leaderboard total. Hint purchases are final — there is no refund.",
+      "Revealing a hint deducts points from your leaderboard total. Hint purchases are final. There is no refund.",
       "Prizes go to the top individuals and top teams overall. You must be present at the closing ceremony to claim.",
       "Organizer decisions on scoring disputes are final.",
     ],
@@ -69,7 +69,7 @@ export default function TermsPage() {
       <PageHeader
         eyebrow="The Fine Print"
         title="Terms"
-        description="What taking part in this competition commits you to. Short, and specific to the CTF — the OWASP Foundation's own policies govern everything beyond it."
+        description="What taking part in this competition commits you to. Short, and specific to the CTF. The OWASP Foundation's own policies govern everything beyond it."
       />
 
       <section className="rounded-lg border border-white/[0.06] bg-[#16162a] p-6">
@@ -77,7 +77,7 @@ export default function TermsPage() {
         <p className="text-sm leading-relaxed text-zinc-400">
           This page covers participation in the CTF. Beyond it, the OWASP Foundation&apos;s{" "}
           <ExternalLink href={event.owaspDisclaimerUrl}>General Disclaimer</ExternalLink> applies
-          to this site and its content — including that everything here is provided without
+          to this site and its content, including that everything here is provided without
           warranty of service or accuracy. Conduct is governed by the{" "}
           <Link
             href="/code-of-conduct"

@@ -67,7 +67,7 @@ const NEVER = [
 const cookies: { name: string; what: string; life: string }[] = [
   {
     name: "Sign-in session",
-    what: "Set when you sign in with GitHub, and holds your session. Encrypted, and readable only by the server — your browser can't read it and neither can any script on the page.",
+    what: "Set when you sign in with GitHub, and holds your session. Encrypted, and readable only by the server. Your browser can't read it, and neither can any script on the page.",
     life: "7 days",
   },
   {
@@ -77,7 +77,7 @@ const cookies: { name: string; what: string; life: string }[] = [
   },
   {
     name: "ctf-challenges-gate",
-    what: "Remembers that the challenge-board password was entered correctly. Holds an expiry timestamp and a signature — nothing about you.",
+    what: "Remembers that the challenge-board password was entered correctly. Holds an expiry timestamp and a signature. Nothing about you.",
     life: "30 days",
   },
   {
@@ -93,7 +93,7 @@ export default function PrivacyPage() {
       <PageHeader
         eyebrow="Privacy"
         title="Privacy notice"
-        description="A security event should be able to explain exactly what it does with your data. This page does that — written against the code, in plain language, with the awkward parts left in."
+        description="A security event should be able to explain exactly what it does with your data. This page does that: written against the code, in plain language, with the awkward parts left in."
       />
 
       <section className="rounded-lg border border-[#22c55e]/25 bg-[#22c55e]/[0.05] p-6">
@@ -124,7 +124,7 @@ export default function PrivacyPage() {
 
       <Card heading="Signing in with GitHub">
         <p className="mb-4 text-sm leading-relaxed text-zinc-400">
-          We use GitHub OAuth and ask for the two narrowest scopes available —{" "}
+          We use GitHub OAuth and ask for the two narrowest scopes available:{" "}
           <span className="font-mono text-xs text-zinc-200">read:user</span> and{" "}
           <span className="font-mono text-xs text-zinc-200">user:email</span>. Both are
           read-only.
@@ -156,11 +156,11 @@ export default function PrivacyPage() {
         <Bullets
           items={[
             <>
-              <span className="text-white">Team membership</span> — the team&apos;s name, who
+              <span className="text-white">Team membership</span>: the team&apos;s name, who
               created it, and the GitHub logins of its members.
             </>,
             <>
-              <span className="text-white">Hint purchases</span> — which hints you revealed,
+              <span className="text-white">Hint purchases</span>: which hints you revealed,
               when, and the running point penalty against your login.
             </>,
             <>
@@ -171,11 +171,11 @@ export default function PrivacyPage() {
           ]}
         />
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          All of it is keyed to a public GitHub username and nothing more — no email, no real
+          All of it is keyed to a public GitHub username and nothing more: no email, no real
           name, no device or location data. It lives in an AWS DynamoDB table and an Upstash
           Redis instance run for this event. Being straight with you: this competition data has
           no automatic expiry today, so treat it as kept until the organizers clear it down
-          after the event. You can ask for yours sooner — see below.
+          after the event. You can ask for yours sooner. See below.
         </p>
       </Card>
 
@@ -184,14 +184,14 @@ export default function PrivacyPage() {
           Before the board opens it sits behind a password, and to stop that password being
           brute forced we count failed attempts per IP address: five wrong tries locks that
           address for 24 hours. So a failed attempt writes down an{" "}
-          <span className="text-white">IP address</span>, a counter, and a timestamp — the one
+          <span className="text-white">IP address</span>, a counter, and a timestamp, the one
           place on this site where an IP address is stored at all.
         </p>
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
           We keep that as tight as we can. The record is deleted the moment a correct password
           is entered from that address, and anything left over expires automatically after{" "}
           <span className="text-white">30 days</span>. It is never linked to your GitHub
-          account — the gate runs before anyone signs in, so there is no identity to attach it
+          account. The gate runs before anyone signs in, so there is no identity to attach it
           to even if we wanted one. One caveat worth knowing on conference Wi-Fi: an IP address
           can cover a lot of people, so a lockout may not have been caused by you.
         </p>
@@ -202,14 +202,14 @@ export default function PrivacyPage() {
           We&apos;d like to be able to say which countries the CTF reached. So once per browser
           session, one number goes up: a tally against a{" "}
           <span className="text-white">country code</span>, and nothing else. No login, no IP
-          address — not even a hashed or obfuscated one — no timestamp, no session id, nothing
+          address (not even a hashed or obfuscated one), no timestamp, no session id, nothing
           that could be traced back to a person or joined against anything else we hold.
         </p>
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
           The country is worked out by our host from the connection and handed to us already
           reduced to a two-letter code; we never see or record the address behind it. What we
           end up with is a list that reads{" "}
-          <span className="font-mono text-xs text-zinc-200">US 412 · DE 88 · JP 40</span> — a
+          <span className="font-mono text-xs text-zinc-200">US 412 · DE 88 · JP 40</span>, a
           rough measure of reach rather than a headcount, and not personal data.
         </p>
       </Card>
@@ -246,13 +246,13 @@ export default function PrivacyPage() {
 
       <Card heading="What other people can see">
         <p className="mb-4 text-sm leading-relaxed text-zinc-400">
-          The leaderboard is public — that&apos;s rather the point of a leaderboard — so
+          The leaderboard is public (that&apos;s rather the point of a leaderboard), so
           it&apos;s worth being precise about where the line falls. Public:
         </p>
         <Bullets
           items={[
             "Your GitHub login and avatar, your rank, your points, and how many challenges you have patched and not patched.",
-            "Your team, if you're on one — and expanding a team shows every member's login and avatar.",
+            "Your team, if you're on one. Expanding a team shows every member's login and avatar.",
             "The total point penalty from hints you've revealed. Which specific hints you bought stays private.",
             "For some scoring modes, the number of your most recent pull request and a short commit hash.",
           ]}
@@ -268,24 +268,24 @@ export default function PrivacyPage() {
         <Bullets
           items={[
             <>
-              <span className="text-white">GitHub</span> — handles sign-in, hosts the challenge
+              <span className="text-white">GitHub</span>: handles sign-in, hosts the challenge
               repositories, and serves avatar images. Worth knowing: avatars load straight from
               GitHub, so GitHub sees the IP of anyone viewing a page with avatars on it,
               including the leaderboard.
             </>,
             <>
-              <span className="text-white">Vercel</span> — hosts this site, so it processes
+              <span className="text-white">Vercel</span>: hosts this site, so it processes
               requests and keeps standard server logs. We also use Vercel Web Analytics, which
               records which page was viewed. It sets no cookie, and we send it no identifiers,
               so it cannot tell who you are.
             </>,
             <>
-              <span className="text-white">AWS and Upstash</span> — store the competition data
+              <span className="text-white">AWS and Upstash</span>: store the competition data
               described above. AWS is reached with short-lived credentials rather than stored
               keys.
             </>,
             <>
-              <span className="text-white">Discord</span> — only ever a link from this site. If
+              <span className="text-white">Discord</span>: only ever a link from this site. If
               you join, Discord&apos;s own privacy policy governs what happens there.
             </>,
           ]}
@@ -302,7 +302,7 @@ export default function PrivacyPage() {
         <Bullets
           items={[
             "Don't sign in. Everything except your own profile, teams, and hints works signed out.",
-            "Leave your team at any time from your profile — that removes your login from the team record immediately.",
+            "Leave your team at any time from your profile. That removes your login from the team record immediately.",
             "Clear your cookies, or just wait for them to expire, to end the session.",
           ]}
         />
@@ -313,7 +313,7 @@ export default function PrivacyPage() {
             {event.privacyContactEmail}
           </a>
           , the address published in the{" "}
-          <ExternalLink href={event.owaspPrivacyUrl}>OWASP Privacy Policy</ExternalLink> —
+          <ExternalLink href={event.owaspPrivacyUrl}>OWASP Privacy Policy</ExternalLink>,
           which also sets out the rights available to you, including the additional rights of
           EEA and California residents. For CTF-specific data such as team membership or hint
           purchases, an organizer in the{" "}

@@ -45,7 +45,7 @@ export default function CodeOfConductPage() {
               <ExternalLink href={event.defconCodeOfConductUrl}>
                 DEF CON Code of Conduct
               </ExternalLink>{" "}
-              governs the venue and everyone in it — attendees, speakers, press, volunteers,
+              governs the venue and everyone in it: attendees, speakers, press, volunteers,
               and Goons alike. DEF CON states it does not condone harassment against any
               participant, for any reason, and that harassment includes deliberate intimidation
               and targeting people in a way that makes them feel uncomfortable, unwelcome, or
@@ -79,13 +79,13 @@ export default function CodeOfConductPage() {
         <h2 className="mb-2 text-lg font-semibold text-white">Reporting a problem</h2>
         <p className="mb-4 text-sm leading-relaxed text-zinc-400">
           You do not need to be the target to report something, and you do not need proof. If
-          something feels wrong, say so — every route below reaches a real person.
+          something feels wrong, say so. Every route below reaches a real person.
         </p>
         <ul className="flex flex-col gap-3">
           <li className="flex gap-3 text-sm leading-relaxed text-zinc-400">
             <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-[#e53e3e]" />
             <span>
-              <span className="font-semibold text-white">At the conference</span> — contact any
+              <span className="font-semibold text-white">At the conference</span>: contact any
               Goon, the registration desk, or an info booth. DEF CON also runs a safety hotline
               you can call or text:{" "}
               <a
@@ -100,7 +100,7 @@ export default function CodeOfConductPage() {
           <li className="flex gap-3 text-sm leading-relaxed text-zinc-400">
             <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-[#e53e3e]" />
             <span>
-              <span className="font-semibold text-white">Year-round, to DEF CON</span> —{" "}
+              <span className="font-semibold text-white">Year-round, to DEF CON</span>:{" "}
               <a
                 href={`mailto:${event.defconSafetyEmail}`}
                 className="font-mono ds-link"
@@ -113,7 +113,7 @@ export default function CodeOfConductPage() {
           <li className="flex gap-3 text-sm leading-relaxed text-zinc-400">
             <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-[#e53e3e]" />
             <span>
-              <span className="font-semibold text-white">For anything CTF-specific</span> — find
+              <span className="font-semibold text-white">For anything CTF-specific</span>: find
               an organizer at the OWASP CTF area, or message the organizers in the{" "}
               <ExternalLink href={event.discordUrl}>CTF Discord</ExternalLink>. This is also the
               right route for scoring disputes and for reporting a bug in a challenge or the
@@ -131,8 +131,8 @@ export default function CodeOfConductPage() {
             <span>
               <Link href="/rules" className="ds-link">
                 Rules
-              </Link>{" "}
-              — teams, fair play, scope, and how scoring works.
+              </Link>
+              : teams, fair play, scope, and how scoring works.
             </span>
           </li>
           <li className="flex gap-3 text-sm leading-relaxed text-zinc-400">
@@ -144,8 +144,8 @@ export default function CodeOfConductPage() {
               and{" "}
               <Link href="/privacy" className="ds-link">
                 Privacy
-              </Link>{" "}
-              — what taking part commits you to, and what this site stores about you.
+              </Link>
+              : what taking part commits you to, and what this site stores about you.
             </span>
           </li>
         </ul>
