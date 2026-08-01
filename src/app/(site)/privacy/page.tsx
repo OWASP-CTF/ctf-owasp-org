@@ -3,11 +3,20 @@
 // what a one-off CTF site does with GitHub logins, hint purchases, and gate
 // rate-limiting data.
 //
-// IMPORTANT: every factual claim here is meant to match the code. If you change
-// what is stored, what a cookie holds, or how long anything is kept, change this
-// page in the same PR. The relevant sources are src/lib/auth.ts (sessions),
-// src/lib/gate.ts + src/lib/dynamo-gate-store.ts (gate + IP throttle),
-// src/lib/hint-store.ts, src/lib/team-store.ts, and src/lib/dynamo-shapes.ts.
+// IMPORTANT: every claim here is a promise about code in this repo. If you
+// change what is stored, what a cookie holds, or how long anything is kept,
+// change this page in the SAME PR. Sources for the claims below:
+//   src/lib/auth.ts .................. sessions, OAuth scopes, no token storage
+//   src/lib/gate.ts .................. gate cookie
+//   src/lib/dynamo-gate-store.ts ..... gate IP throttle + 30-day TTL
+//   src/lib/dynamo-stats.ts .......... aggregate country counters
+//   src/lib/hint-store.ts ............ hint purchases
+//   src/lib/team-store.ts ............ team membership
+//   src/lib/dynamo-shapes.ts ......... every item shape in one place
+//
+// Tone note: this page reads as reassuring because the underlying design
+// genuinely is careful — not the other way round. Don't add warmth here that
+// the code doesn't earn.
 
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -21,12 +30,7 @@ export const metadata: Metadata = {
 };
 
 const ExternalLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
-  <a
-    href={href}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="ds-link"
-  >
+  <a href={href} target="_blank" rel="noopener noreferrer" className="ds-link">
     {children}
   </a>
 );
@@ -38,36 +42,47 @@ const Card = ({ heading, children }: { heading: string; children: React.ReactNod
   </section>
 );
 
-const Bullets = ({ items }: { items: React.ReactNode[] }) => (
+const Bullets = ({ items, accent = "#2563eb" }: { items: React.ReactNode[]; accent?: string }) => (
   <ul className="flex flex-col gap-3">
     {items.map((item, i) => (
       <li key={i} className="flex gap-3 text-sm leading-relaxed text-zinc-400">
-        <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-[#2563eb]" />
+        <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full" style={{ background: accent }} />
         <span>{item}</span>
       </li>
     ))}
   </ul>
 );
 
+// The strongest thing this page can say is what never happens at all. Every
+// line here is enforced by code, not policy — check before adding to it.
+const NEVER = [
+  "No advertising, no tracking pixels, no third-party analytics, no data broker. Nothing about you is sold or shared.",
+  "No consent banner, because there is nothing to consent to. Every cookie we set is doing a job you asked for.",
+  "Your email address and your real name are never written to our databases and never appear anywhere on this site.",
+  "We never ask GitHub for write access. We cannot push code, open pull requests, change your repositories, or act as you.",
+  "We don't keep the GitHub access token issued at sign-in, so there is no key to your GitHub account sitting in our systems.",
+  "We don't build a location history. The only geographic data we hold is a per-country tally with nobody's name on it.",
+];
+
 const cookies: { name: string; what: string; life: string }[] = [
   {
     name: "Sign-in session",
-    what: "Set when you sign in with GitHub. Encrypted, and readable only by the server — your browser can't read it and neither can any script on the page.",
+    what: "Set when you sign in with GitHub, and holds your session. Encrypted, and readable only by the server — your browser can't read it and neither can any script on the page.",
     life: "7 days",
   },
   {
     name: "Sign-in handshake",
-    what: "A short-lived cookie that protects the GitHub sign-in redirect against tampering. Discarded as soon as sign-in finishes.",
+    what: "Protects the GitHub sign-in redirect against tampering. Discarded the moment sign-in finishes.",
     life: "10 minutes",
   },
   {
     name: "ctf-challenges-gate",
-    what: "Records that the challenge-board password was entered correctly. Holds an expiry timestamp and a signature — no information about you.",
+    what: "Remembers that the challenge-board password was entered correctly. Holds an expiry timestamp and a signature — nothing about you.",
     life: "30 days",
   },
   {
     name: "ctf-mock-team",
-    what: "Only set in the pre-event demo mode, to remember a team choice locally when nothing is being written server-side.",
+    what: "Only in the pre-event demo mode, to remember a team choice locally when nothing is being written server-side.",
     life: "30 days",
   },
 ];
@@ -78,47 +93,61 @@ export default function PrivacyPage() {
       <PageHeader
         eyebrow="Privacy"
         title="Privacy notice"
-        description="What this site collects, where it goes, and who can see it. Written to match what the code actually does — not a template."
+        description="A security event should be able to explain exactly what it does with your data. This page does that — written against the code, in plain language, with the awkward parts left in."
       />
+
+      <section className="rounded-lg border border-[#22c55e]/25 bg-[#22c55e]/[0.05] p-6">
+        <h2 className="mb-4 text-lg font-semibold text-white">What we never do</h2>
+        <Bullets items={NEVER} accent="#22c55e" />
+      </section>
 
       <section className="rounded-lg border border-white/[0.06] bg-[#16162a] p-6">
         <p className="text-sm leading-relaxed text-zinc-400">
           The OWASP Foundation&apos;s{" "}
           <ExternalLink href={event.owaspPrivacyUrl}>Privacy Policy</ExternalLink> is the
-          governing document and covers OWASP as a whole. This page is narrower: it describes
-          what <span className="text-white">this competition site</span>{" "}
+          governing document and covers OWASP as a whole. This page is narrower and more
+          specific: it describes what{" "}
+          <span className="text-white">this competition site</span>{" "}
           does, because a general policy can&apos;t tell you what happens to a hint purchase or
           a GitHub login on a leaderboard.
         </p>
       </section>
 
-      <Card heading="You can use most of this site without signing in">
+      <Card heading="Most of this site needs nothing from you">
         <Bullets
           items={[
-            "Browsing the challenges, the leaderboard, the rules, and these policy pages requires no account and no sign-in.",
-            "Signing in is only needed to claim your row on the leaderboard, see your own per-challenge breakdown, join a team, or reveal a hint.",
+            "Browsing the challenges, the leaderboard, the rules, and these policy pages requires no account and no sign-in. Nothing personal is collected while you read.",
+            "Sign in only if you want to claim your row on the leaderboard, see your own per-challenge breakdown, join a team, or reveal a hint. Working through the challenges without ever signing in is a perfectly valid way to use this event.",
           ]}
         />
       </Card>
 
-      <Card heading="What we get when you sign in with GitHub">
+      <Card heading="Signing in with GitHub">
         <p className="mb-4 text-sm leading-relaxed text-zinc-400">
-          Sign-in uses GitHub OAuth. We request read-only access to your profile and email
-          address — we never request write access to your repositories, and we cannot push code,
-          open pull requests, or change anything in your account.
+          We use GitHub OAuth and ask for the two narrowest scopes available —{" "}
+          <span className="font-mono text-xs text-zinc-200">read:user</span> and{" "}
+          <span className="font-mono text-xs text-zinc-200">user:email</span>. Both are
+          read-only.
         </p>
         <Bullets
           items={[
             <>
-              GitHub gives us your <span className="text-white">login</span>, numeric account
+              GitHub hands us your <span className="text-white">login</span>, numeric account
               id, display name, avatar URL, and email address.
             </>,
             <>
-              Of those, only your <span className="text-white">GitHub login</span> is ever
-              stored on our side or shown to anyone. Your email address and display name are
-              never written to our databases and are never displayed anywhere on this site.
+              Of those we keep exactly one: your{" "}
+              <span className="text-white">GitHub login</span>, because the scorer credits
+              points to the account that authored a pull request. The rest renders the page
+              you&apos;re on and is then forgotten.
             </>,
-            "Sessions are held entirely in an encrypted cookie — there is no account database, so signing out and letting the cookie expire leaves nothing behind from the sign-in itself.",
+            <>
+              We deliberately{" "}
+              <span className="text-white">do not store the access token</span>{" "}
+              GitHub issues at sign-in. This app never calls the GitHub API, so keeping that
+              token would mean holding a credential we have no use for.
+            </>,
+            "There is no account database. Your session lives entirely in an encrypted cookie, so once it expires the sign-in has left nothing behind on our side.",
           ]}
         />
       </Card>
@@ -136,38 +165,60 @@ export default function PrivacyPage() {
             </>,
             <>
               <span className="text-white">Your scores</span>{" "}
-              are produced by the scoring pipeline from the pull requests you open, and are
-              keyed to the GitHub login that authored the PR. This site reads them; it
-              doesn&apos;t create them.
+              come from the scoring pipeline, keyed to the GitHub login that authored the pull
+              request. This site reads them; it doesn&apos;t create them.
             </>,
           ]}
         />
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          This is held in an AWS DynamoDB table and an Upstash Redis instance run for the event.
-          Being straight with you: none of it is on an automatic expiry timer today, so treat it
-          as kept until the organizers clear it down after the event. See below if you want it
-          removed sooner.
+          All of it is keyed to a public GitHub username and nothing more — no email, no real
+          name, no device or location data. It lives in an AWS DynamoDB table and an Upstash
+          Redis instance run for this event. Being straight with you: this competition data has
+          no automatic expiry today, so treat it as kept until the organizers clear it down
+          after the event. You can ask for yours sooner — see below.
         </p>
       </Card>
 
-      <Card heading="Rate-limiting the challenge gate">
+      <Card heading="Protecting the challenge board">
         <p className="text-sm leading-relaxed text-zinc-400">
-          Before the challenge board opens it sits behind a password. To stop it being brute
-          forced, five wrong attempts from one IP address lock that address out for 24 hours,
-          which means we record the{" "}
-          <span className="text-white">IP address of failed attempts</span>{" "}
-          along with a counter and a timestamp. The record is deleted as soon as a correct
-          password is entered from that address. Note that if you&apos;re on shared or conference Wi-Fi, an
-          IP address can cover a lot of people — a lockout may not have been caused by you.
+          Before the board opens it sits behind a password, and to stop that password being
+          brute forced we count failed attempts per IP address: five wrong tries locks that
+          address for 24 hours. So a failed attempt writes down an{" "}
+          <span className="text-white">IP address</span>, a counter, and a timestamp — the one
+          place on this site where an IP address is stored at all.
+        </p>
+        <p className="mt-4 text-sm leading-relaxed text-zinc-400">
+          We keep that as tight as we can. The record is deleted the moment a correct password
+          is entered from that address, and anything left over expires automatically after{" "}
+          <span className="text-white">30 days</span>. It is never linked to your GitHub
+          account — the gate runs before anyone signs in, so there is no identity to attach it
+          to even if we wanted one. One caveat worth knowing on conference Wi-Fi: an IP address
+          can cover a lot of people, so a lockout may not have been caused by you.
+        </p>
+      </Card>
+
+      <Card heading="Counting where the event reached">
+        <p className="text-sm leading-relaxed text-zinc-400">
+          We&apos;d like to be able to say which countries the CTF reached. So once per browser
+          session, one number goes up: a tally against a{" "}
+          <span className="text-white">country code</span>, and nothing else. No login, no IP
+          address — not even a hashed or obfuscated one — no timestamp, no session id, nothing
+          that could be traced back to a person or joined against anything else we hold.
+        </p>
+        <p className="mt-4 text-sm leading-relaxed text-zinc-400">
+          The country is worked out by our host from the connection and handed to us already
+          reduced to a two-letter code; we never see or record the address behind it. What we
+          end up with is a list that reads{" "}
+          <span className="font-mono text-xs text-zinc-200">US 412 · DE 88 · JP 40</span> — a
+          rough measure of reach rather than a headcount, and not personal data.
         </p>
       </Card>
 
       <Card heading="Cookies">
         <p className="mb-4 text-sm leading-relaxed text-zinc-400">
-          No advertising cookies, no tracking cookies, no third-party cookies, and no consent
-          banner because there is nothing to consent to. Every cookie below is strictly
-          functional and marked <span className="font-mono text-zinc-200">httpOnly</span>, so
-          page scripts cannot read any of them.
+          Four, all strictly functional, all marked{" "}
+          <span className="font-mono text-xs text-zinc-200">httpOnly</span> so no script on the
+          page can read them. None of them track you, and none follow you off this site.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[34rem] text-left text-sm">
@@ -195,20 +246,21 @@ export default function PrivacyPage() {
 
       <Card heading="What other people can see">
         <p className="mb-4 text-sm leading-relaxed text-zinc-400">
-          The leaderboard is public — anyone can read it without signing in. It shows, for each
-          contestant:
+          The leaderboard is public — that&apos;s rather the point of a leaderboard — so
+          it&apos;s worth being precise about where the line falls. Public:
         </p>
         <Bullets
           items={[
             "Your GitHub login and avatar, your rank, your points, and how many challenges you have patched and not patched.",
             "Your team, if you're on one — and expanding a team shows every member's login and avatar.",
-            "The point penalty from any hints you've revealed, as a total. Which specific hints you bought is not public.",
+            "The total point penalty from hints you've revealed. Which specific hints you bought stays private.",
             "For some scoring modes, the number of your most recent pull request and a short commit hash.",
           ]}
         />
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          Your email address, your real name, and the contents of hints you&apos;ve revealed are
-          not public — those appear only on your own profile page, which requires your session.
+          Not public, and not visible to other contestants or to organizers browsing the site:
+          your email address, your real name, and the contents of any hint you&apos;ve revealed.
+          Those appear only on your own profile page, behind your own session.
         </p>
       </Card>
 
@@ -217,56 +269,57 @@ export default function PrivacyPage() {
           items={[
             <>
               <span className="text-white">GitHub</span> — handles sign-in, hosts the challenge
-              repositories, and serves avatar images. Because avatars load straight from
-              GitHub, GitHub sees the IP address of anyone viewing a page with avatars on it,
+              repositories, and serves avatar images. Worth knowing: avatars load straight from
+              GitHub, so GitHub sees the IP of anyone viewing a page with avatars on it,
               including the leaderboard.
             </>,
             <>
-              <span className="text-white">Vercel</span> — hosts this site, so it processes all
+              <span className="text-white">Vercel</span> — hosts this site, so it processes
               requests and keeps standard server logs. We also use Vercel Web Analytics, which
-              records which page was viewed. It sets no cookie, and this site sends it no
-              identifiers, so it cannot tell who you are.
+              records which page was viewed. It sets no cookie, and we send it no identifiers,
+              so it cannot tell who you are.
             </>,
             <>
               <span className="text-white">AWS and Upstash</span> — store the competition data
-              described above.
+              described above. AWS is reached with short-lived credentials rather than stored
+              keys.
             </>,
             <>
               <span className="text-white">Discord</span> — only ever a link from this site. If
-              you join, Discord&apos;s own privacy policy applies to what happens there.
+              you join, Discord&apos;s own privacy policy governs what happens there.
             </>,
           ]}
         />
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          Nothing here is sold, and none of it is used for advertising.
+          Nothing is sold, nothing is used for advertising, and nothing is shared beyond the
+          services above that make the event run. Our stores are backed up as a matter of
+          routine, so a deleted record can persist in a backup for a short period before ageing
+          out.
         </p>
       </Card>
 
-      <Card heading="Your choices">
+      <Card heading="Your choices, and how to reach a human">
         <Bullets
           items={[
             "Don't sign in. Everything except your own profile, teams, and hints works signed out.",
-            "Leave your team at any time from your profile — that removes your login from the team record.",
-            "Clear your cookies, or wait for them to expire, to end the session.",
+            "Leave your team at any time from your profile — that removes your login from the team record immediately.",
+            "Clear your cookies, or just wait for them to expire, to end the session.",
           ]}
         />
         <p className="mt-4 text-sm leading-relaxed text-zinc-400">
-          There is no self-serve delete button for competition data, so requests go to a human.
-          For access, correction, or deletion, contact OWASP at{" "}
-          <a
-            href={`mailto:${event.privacyContactEmail}`}
-            className="font-mono ds-link"
-          >
+          There is no self-serve delete button for competition data, so those requests go to a
+          person. For access, correction, or deletion, contact OWASP at{" "}
+          <a href={`mailto:${event.privacyContactEmail}`} className="ds-link font-mono">
             {event.privacyContactEmail}
           </a>
-          , which is the address published in the{" "}
-          <ExternalLink href={event.owaspPrivacyUrl}>OWASP Privacy Policy</ExternalLink> — that
-          policy also sets out the rights available to you, including the additional rights of
+          , the address published in the{" "}
+          <ExternalLink href={event.owaspPrivacyUrl}>OWASP Privacy Policy</ExternalLink> —
+          which also sets out the rights available to you, including the additional rights of
           EEA and California residents. For CTF-specific data such as team membership or hint
           purchases, an organizer in the{" "}
           <ExternalLink href={event.discordUrl}>CTF Discord</ExternalLink> can usually sort it
-          out faster. Note that removing your scores from the leaderboard means withdrawing from
-          the competition.
+          out faster. One honest caveat: removing your scores from the leaderboard means
+          withdrawing from the competition.
         </p>
       </Card>
 
@@ -276,10 +329,7 @@ export default function PrivacyPage() {
           terms
         </Link>{" "}
         and the{" "}
-        <Link
-          href="/code-of-conduct"
-          className="ds-link"
-        >
+        <Link href="/code-of-conduct" className="ds-link">
           code of conduct
         </Link>
         .

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins, Barlow, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import SiteHeader from "@/components/site-header";
+import VisitBeacon from "@/components/visit-beacon";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -41,6 +42,7 @@ export default function RootLayout({
         <SiteHeader />
         {children}
         <Analytics />
+        <VisitBeacon />
       </body>
     </html>
   );

@@ -20,6 +20,28 @@ export const auth = betterAuth({
       version: "1",
     },
   },
+  account: {
+    // Without a `database`, better-auth force-enables this
+    // (context/create-context.mjs: `if (!options.database) ... storeAccountCookie: true`),
+    // which writes the GitHub access AND refresh token into a client-side
+    // `better-auth.account_data` cookie for 7 days. It's JWE-encrypted with a
+    // key derived from BETTER_AUTH_SECRET, so it isn't readable by the client
+    // — but this app never calls the GitHub API. It only ever reads
+    // session.user.{login,name,email,image}. Shipping token material we have
+    // no use for is unnecessary attack surface (OWASP A04, data minimisation),
+    // so turn it off. An explicit `false` correctly overrides the forced
+    // default, since better-auth merges with defu, which only fills in
+    // undefined/null.
+    storeAccountCookie: false,
+  },
+  // These routes exist purely to hand a provider token back to the caller.
+  // /get-access-token decrypts the account cookie server-side and returns the
+  // raw access token as JSON to anyone holding a valid session cookie — a
+  // decrypt-on-demand oracle that turns a stolen session into a usable GitHub
+  // token. Nothing in this app calls them. Disabling them means that even if
+  // storeAccountCookie is ever flipped back on, a session compromise can't be
+  // escalated into a GitHub token.
+  disabledPaths: ["/get-access-token", "/refresh-token"],
   socialProviders: {
     github: {
       clientId: process.env.GITHUB_CLIENT_ID!,

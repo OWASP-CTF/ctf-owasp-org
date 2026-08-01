@@ -16,15 +16,28 @@
 //                                               by the backfill (Upstash stays
 //                                               the authority — re-backfill
 //                                               after any re-seeding)
+//   pk=STATS            sk=COUNTRY#<iso2>       aggregate reach counter (count N).
+//                                               Deliberately a bare tally: no
+//                                               login, no IP, no timestamp, and
+//                                               nothing that could be joined back
+//                                               to a person. Do not add fields
+//                                               here without re-reading /privacy.
 //   pk=GATE             sk=IP#<ip>              challenges-gate brute-force
 //                                               throttle (failures N, lastFailAt
-//                                               N epoch-ms; the table has no TTL —
-//                                               expiry is enforced on read)
+//                                               N epoch-ms, ttl N epoch-SECONDS).
+//                                               ttl is a 30-day retention bound on
+//                                               the IP, reaped by DynamoDB; the 24h
+//                                               lock itself is still enforced on
+//                                               read, since TTL deletion is only
+//                                               best-effort. Requires TTL enabled
+//                                               on the table with AttributeName
+//                                               "ttl" — see README.
 
 import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 
 export type DynamoItem = Record<string, AttributeValue>;
 
+export const STATS_PK = "STATS";
 export const TEAMS_PK = "TEAMS";
 export const HINTSPEND_PK = "HINTSPEND";
 export const HINTS_PK = "HINTS";
@@ -37,6 +50,7 @@ export const userPk = (login: string) => `USER#${login}`;
 export const hintSk = (app: string, id: string) => `${HINT_SK_PREFIX}${app}#${id}`;
 export const spendSk = (login: string) => `AUTHOR#${login}`;
 export const gateSk = (ip: string) => `IP#${ip}`;
+export const countrySk = (code: string) => `COUNTRY#${code}`;
 
 export const getS = (item: DynamoItem | undefined, name: string): string | null => {
   const value = item?.[name]?.S;
