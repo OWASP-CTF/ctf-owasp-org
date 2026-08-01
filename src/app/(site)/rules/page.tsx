@@ -40,7 +40,7 @@ const sections: { heading: string; rules: React.ReactNode[] }[] = [
       <>
         <span className="text-white">Please use AI.</span>{" "}
         Finding and patching these vulnerabilities with an AI agent is the intended workflow,
-        not a shortcut against the rules — it&apos;s the skill the event is built to teach. Start with OWASP&apos;s{" "}
+        not a shortcut against the rules. It&apos;s the skill the event is built to teach. Start with OWASP&apos;s{" "}
         <ExternalLink href={event.secureAgentPlaybookUrl}>Secure Agent Playbook</ExternalLink>.
       </>,
     ],

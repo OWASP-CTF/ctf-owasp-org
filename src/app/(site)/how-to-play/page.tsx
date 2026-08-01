@@ -23,7 +23,7 @@ const steps = [
   },
   {
     title: "Find the vulnerability",
-    body: "Work the target like a real audit: read the source, exercise the app, and identify the OWASP Top 10 flaw behind the challenge. Please use AI here — point an agent at the codebase and have it do the analysis and draft the remediation. That's the intended workflow, not a shortcut around it.",
+    body: "Work the target like a real audit: read the source, exercise the app, and identify the OWASP Top 10 flaw behind the challenge. Please use AI here. Point an agent at the codebase and have it do the analysis and draft the remediation. That's the intended workflow, not a shortcut around it.",
   },
   {
     title: "Patch it and open a pull request",
@@ -149,8 +149,8 @@ export default function HowToPlayPage() {
             className="ds-link"
           >
             Secure Agent Playbook
-          </a>{" "}
-          &mdash; structured, OWASP-grounded procedures for security code review, dependency and
+          </a>
+          : structured, OWASP-grounded procedures for security code review, dependency and
           secrets scanning, and API assessment, mapped to the same Top 10 categories these
           challenges are graded against. Point it at your fork before you start reading files by
           hand.

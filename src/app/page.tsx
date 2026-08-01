@@ -13,7 +13,7 @@ const STEPS = [
   },
   {
     title: "Find the vulnerability",
-    body: "Work through the OWASP Top 10 (Web and API) to identify a real flaw in the target's source. Please use AI — point an agent at the codebase. That's the workflow this event is built to teach.",
+    body: "Work through the OWASP Top 10 (Web and API) to identify a real flaw in the target's source. Please use AI. Point an agent at the codebase. That's the workflow this event is built to teach.",
   },
   {
     title: "Patch it and open a PR",
@@ -201,8 +201,8 @@ export default async function Home() {
             <p className="max-w-2xl text-base leading-relaxed text-zinc-400">
               This isn&rsquo;t tolerated, it&rsquo;s the point. Reviewing code, finding the flaw,
               and writing the patch with an AI agent is the skill this event exists to build.
-              Bring whatever you already use &mdash; Claude Code, Copilot, Cursor, your own
-              harness &mdash; and let it read the target.
+              Bring whatever you already use (Claude Code, Copilot, Cursor, your own
+              harness) and let it read the target.
             </p>
             <div className="mt-1 h-px w-full bg-gradient-to-r from-[#2563eb]/40 via-white/[0.06] to-transparent" />
           </div>
@@ -214,7 +214,7 @@ export default async function Home() {
             <p className="max-w-3xl text-sm leading-relaxed text-zinc-400">
               OWASP&rsquo;s own open-source playbook for pointing an AI agent at a codebase. It
               ships structured, OWASP-grounded procedures for security code review, dependency
-              and secrets scanning, and API and web assessment &mdash; each one mapped to the
+              and secrets scanning, and API and web assessment, each one mapped to the
               same OWASP Top 10 categories these challenges are graded against. It turns
               &ldquo;find the bug&rdquo; into a repeatable method, which is exactly what you want
               against 300-plus challenges on a deadline.

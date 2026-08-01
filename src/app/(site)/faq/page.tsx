@@ -33,7 +33,7 @@ const faqs: QA[] = [
         There&apos;s no flag to type in. Fork the target&apos;s repo under the OWASP-CTF org, fix
         the vulnerability on a branch in your fork, and open a pull request against the
         repo&apos;s <code className="font-mono text-zinc-200">dc34-ctf</code>{" "}
-        branch — that&apos;s the only branch the scorer watches, and there is no per-challenge
+        branch. That&apos;s the only branch the scorer watches, and there is no per-challenge
         branch. A GitHub Action builds your app, runs the rubric, and posts your score on the
         PR, usually in two to five minutes. See{" "}
         <Link href="/how-to-play" className="ds-link">
@@ -51,7 +51,7 @@ const faqs: QA[] = [
     q: "Can I use AI tools to help?",
     a: (
       <>
-        Yes — <span className="text-zinc-200">please do</span>. Using AI to analyze and remediate
+        Yes, <span className="text-zinc-200">please do</span>. Using AI to analyze and remediate
         these vulnerabilities is the skillset this event is built around, not something to hide
         or work around. Bring whatever you already use, and point it at your fork. OWASP&apos;s
         own{" "}
@@ -63,7 +63,7 @@ const faqs: QA[] = [
         >
           Secure Agent Playbook
         </a>{" "}
-        will get you further faster — it gives an agent structured, OWASP-grounded procedures for
+        will get you further faster. It gives an agent structured, OWASP-grounded procedures for
         code review, dependency and secrets scanning, and API assessment, mapped to the same Top
         10 categories these challenges are graded against.
       </>
@@ -71,7 +71,7 @@ const faqs: QA[] = [
   },
   {
     q: "How is my progress tracked?",
-    a: "Sign in with GitHub to claim your row on the live leaderboard and see a full per-app, per-challenge breakdown on your profile. Points are credited to the account that authored the pull request, so open your PRs from the same account you sign in with — otherwise your score lands on a row you can't see.",
+    a: "Sign in with GitHub to claim your row on the live leaderboard and see a full per-app, per-challenge breakdown on your profile. Points are credited to the account that authored the pull request, so open your PRs from the same account you sign in with. Otherwise your score lands on a row you can't see.",
   },
   {
     q: "Are there hints?",
@@ -79,11 +79,11 @@ const faqs: QA[] = [
   },
   {
     q: "My PR passed but I didn't get points. What happened?",
-    a: "Check the scoring comment on the PR. If it says the score wasn't recorded, that's on our side — push another commit and the run will record it. If it shows zero challenges patched, the rubric still reproduced the vulnerability, so the fix didn't fully close it. Points also only count for the PR author's account.",
+    a: "Check the scoring comment on the PR. If it says the score wasn't recorded, that's on our side. Push another commit and the run will record it. If it shows zero challenges patched, the rubric still reproduced the vulnerability, so the fix didn't fully close it. Points also only count for the PR author's account.",
   },
   {
     q: "Can I retry a challenge I didn't solve?",
-    a: "Yes, as many times as you like — push another commit and it re-scores. Your best-ever result per challenge counts, so a later fix replaces an earlier miss and you can never lose points you've already banked. Note that every push re-runs that app's whole rubric, so a patch that breaks a challenge you'd already solved will cost you those points until you fix it.",
+    a: "Yes, as many times as you like. Push another commit and it re-scores. Your best-ever result per challenge counts, so a later fix replaces an earlier miss and you can never lose points you've already banked. Note that every push re-runs that app's whole rubric, so a patch that breaks a challenge you'd already solved will cost you those points until you fix it.",
   },
   {
     q: "Is there a prize?",
@@ -101,8 +101,8 @@ const faqs: QA[] = [
           className="ds-link"
         >
           CTF Discord
-        </a>{" "}
-        — that&apos;s where scoring questions, stuck runs, and organizer announcements go.
+        </a>
+        , where scoring questions, stuck runs, and organizer announcements go.
       </>
     ),
   },
