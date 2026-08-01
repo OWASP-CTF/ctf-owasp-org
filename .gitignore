@@ -40,3 +40,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Security-review artifacts, generated locally by the defending-code reference
+# harness. These stay out of the repo on purpose: this repository is public,
+# and the findings/triage files describe unpatched weaknesses in a site that is
+# live during the event. Committing them would publish a to-do list for anyone
+# looking to disrupt the CTF, before the fixes ship. Keep them local, land the
+# fixes, and write up anything worth sharing after the event.
+THREAT_MODEL.md
+VULN-FINDINGS.json
+VULN-FINDINGS.md
+TRIAGE.json
+TRIAGE.md
+PATCHES/
