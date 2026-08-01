@@ -65,7 +65,7 @@ export default function TeamCard({
             <div className="min-w-0">
               <p className="truncate font-mono text-white">{team.name}</p>
               {team.slug !== team.name && (
-                <p className="truncate text-xs text-zinc-500">slug: {team.slug}</p>
+                <p className="truncate text-xs text-muted">slug: {team.slug}</p>
               )}
             </div>
             <button
@@ -87,7 +87,7 @@ export default function TeamCard({
                   {member}
                 </span>
               ))}
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-muted">
                 {team.members.length} / {maxMembers} players
               </span>
             </div>
@@ -99,14 +99,14 @@ export default function TeamCard({
             <button
               type="button"
               onClick={() => setMode("join")}
-              className={`rounded-full border px-2.5 py-0.5 ${mode === "join" ? "border-[#2563eb] text-[#2563eb]" : "border-white/10 text-zinc-400"}`}
+              className={`rounded-full border px-2.5 py-0.5 ${mode === "join" ? "border-[#2563eb] text-[var(--accent-blue-link)]" : "border-white/10 text-zinc-400"}`}
             >
               Join
             </button>
             <button
               type="button"
               onClick={() => setMode("create")}
-              className={`rounded-full border px-2.5 py-0.5 ${mode === "create" ? "border-[#2563eb] text-[#2563eb]" : "border-white/10 text-zinc-400"}`}
+              className={`rounded-full border px-2.5 py-0.5 ${mode === "create" ? "border-[#2563eb] text-[var(--accent-blue-link)]" : "border-white/10 text-zinc-400"}`}
             >
               Create
             </button>
@@ -116,7 +116,7 @@ export default function TeamCard({
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder={mode === "join" ? "team slug" : "team name"}
-              className="w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white placeholder:text-zinc-500 focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
+              className="w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-1.5 text-sm text-white placeholder:text-muted focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
             />
             <button
               type="button"

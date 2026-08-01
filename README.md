@@ -152,7 +152,24 @@ Until the conference starts, `/challenges` can be locked behind a shared passwor
 
 How it works: the proxy (`src/proxy.ts`) redirects visitors without a valid signed cookie to `/gate`, which POSTs the password to `/api/gate`. Verification is entirely server-side (constant-time compare; the password never reaches the client bundle), and success sets an HMAC-signed, httpOnly cookie good for 30 days.
 
-Brute-force throttle: five wrong attempts from one IP lock that IP for 24 hours (`pk=GATE` items in the DynamoDB table; the lock window is enforced in code since the table has no TTL). Locked attempts are rejected before the password is even compared, so the right password won't unlock a locked IP either. Caveat: everyone behind one NAT (an office, a hotel) shares an IP — five collective failures lock them all. If DynamoDB is unreachable the gate fails closed.
+Brute-force throttle: five wrong attempts from one IP lock that IP for 24 hours (`pk=GATE` items in the DynamoDB table). Locked attempts are rejected before the password is even compared, so the right password won't unlock a locked IP either. Caveat: everyone behind one NAT (an office, a hotel) shares an IP — five collective failures lock them all. If DynamoDB is unreachable the gate fails closed.
+
+Retention: those items hold a client IP, so each one carries a `ttl` attribute set 30 days out (epoch **seconds**). The 24h lock window is still enforced on read — DynamoDB only reaps expired items on a best-effort basis, typically within 48h, which is far too loose to enforce a lock. The TTL is purely a retention bound; the throttle is correct whether or not the reaper has run.
+
+> **The `ttl` attribute does nothing unless TTL is enabled on the table.** This is table-level config, not something the app can assert. Enable it once (it is codified in the `dc34` repo's Terraform — prefer changing it there; the CLI form is shown for verification):
+>
+> ```bash
+> aws dynamodb describe-time-to-live --table-name ctf-leaderboard --region us-west-2
+> # if Status is DISABLED:
+> aws dynamodb update-time-to-live --table-name ctf-leaderboard --region us-west-2 \
+>   --time-to-live-specification 'Enabled=true,AttributeName=ttl'
+> ```
+>
+> If it stays disabled the items simply persist, which is the behaviour we had before — no breakage, but the retention promise on `/privacy` would not be met.
+
+## Reach counters
+
+`pk=STATS` / `sk=COUNTRY#<iso2>` holds one integer per country, incremented once per browser session via `POST /api/stats/visit`. The country comes from Vercel's `x-vercel-ip-country` edge header and is validated as ISO-3166 alpha-2 before it is used in a sort key — the request body is ignored entirely. No login, IP, timestamp, or session id is stored alongside it, deliberately: `/privacy` makes a specific promise that this item is a bare tally. Counts are approximate and unauthenticated — a measure of reach, not a headcount.
 
 Rollout: set the two env vars in Vercel and redeploy. At conference start, flip `CHALLENGES_GATE_ENABLED` to `false` (or remove it) and redeploy — outstanding unlock cookies become inert. Rotating the password is the same edit + redeploy; cookies issued earlier stay valid because they are signed by `BETTER_AUTH_SECRET`, not the password.
 

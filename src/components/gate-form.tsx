@@ -62,7 +62,7 @@ export default function GateForm() {
         onChange={(e) => setPassword(e.target.value)}
         autoComplete="off"
         autoFocus
-        className="w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-sm text-white placeholder:text-zinc-600 focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
+        className="w-full rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 font-mono text-sm text-white placeholder:text-muted focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
         placeholder="••••••••"
       />
       <button
@@ -77,7 +77,7 @@ export default function GateForm() {
           {error}
         </p>
       )}
-      <p className="text-xs leading-relaxed text-zinc-500">
+      <p className="text-xs leading-relaxed text-muted">
         Five wrong attempts locks this address out for 24 hours.
       </p>
     </form>

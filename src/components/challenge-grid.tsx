@@ -97,7 +97,7 @@ export default function ChallengeGrid({
     <div className="flex flex-col gap-6">
       <div className="relative w-full sm:max-w-xs">
         <svg
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
           width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         >
           <circle cx="11" cy="11" r="7" />
@@ -105,11 +105,13 @@ export default function ChallengeGrid({
         </svg>
         <input
           type="search"
+          id="challenge-search"
+          name="challenge-search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={catalog ? "Search challenges, apps, or OWASP codes…" : "Search targets…"}
           aria-label="Search challenges"
-          className="w-full rounded-md border border-white/10 bg-white/[0.03] py-2 pl-9 pr-3 text-sm text-white placeholder:text-zinc-500 focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
+          className="w-full rounded-md border border-white/10 bg-white/[0.03] py-2 pl-9 pr-3 text-sm text-white placeholder:text-muted focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
         />
       </div>
 
@@ -135,12 +137,14 @@ export default function ChallengeGrid({
                     <path d={app.icon} />
                   </svg>
                 </span>
-                <span className="font-mono text-xs tabular-nums text-zinc-500">
+                <span className="font-mono text-xs tabular-nums text-muted">
                   {count} challenges
                 </span>
               </div>
 
-              <h3 className="text-lg font-semibold text-white">{app.name}</h3>
+              {/* h2, not h3: these sit directly under the page h1, and skipping
+                  a level breaks the heading outline for screen readers. */}
+              <h2 className="text-lg font-semibold text-white">{app.name}</h2>
               <p className="flex-1 text-sm leading-relaxed text-zinc-400">{app.blurb}</p>
 
               <a
@@ -170,7 +174,7 @@ export default function ChallengeGrid({
                 </div>
               ) : (
                 <div className="flex items-center justify-between border-t border-white/[0.06] pt-3 text-xs">
-                  <span className="font-mono tabular-nums text-zinc-500">
+                  <span className="font-mono tabular-nums text-muted">
                     {app.stars[0]}–{app.stars[1]} pts / challenge
                   </span>
                   <span className="rounded border border-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
@@ -184,7 +188,7 @@ export default function ChallengeGrid({
       </ul>
 
       {visible.length === 0 && (
-        <p className="text-sm text-zinc-500">No challenges match “{query.trim()}”.</p>
+        <p className="text-sm text-muted">No challenges match “{query.trim()}”.</p>
       )}
     </div>
   );
@@ -252,7 +256,7 @@ function CatalogList({
                     target="_blank"
                     rel="noopener noreferrer"
                     title={c.owasp.label}
-                    className="flex-none rounded border border-white/10 px-1 text-[10px] text-zinc-500 transition-colors hover:border-[#2563eb]/60 hover:text-white"
+                    className="ds-tap-24 flex-none rounded border border-white/10 px-1 text-[10px] text-muted transition-colors hover:border-[#2563eb]/60 hover:text-white"
                   >
                     {c.owasp.code}
                   </a>

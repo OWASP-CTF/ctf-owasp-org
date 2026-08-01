@@ -9,8 +9,11 @@
 import { useState } from "react";
 import type { AppId } from "@/lib/apps";
 
+// ds-tap-24 grows the pointer target to the WCAG 2.5.8 minimum without
+// changing the chip's visual box — the rows stack up to 110 deep, so the
+// visible size has to stay small. See globals.css.
 const CHIP =
-  "flex-none rounded border px-1 text-[10px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]";
+  "ds-tap-24 flex-none rounded border px-1 text-[10px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]";
 
 export default function HintButton({
   app,
@@ -78,7 +81,7 @@ export default function HintButton({
           onClick={() => setState("idle")}
           disabled={state === "pending"}
           aria-label="Cancel"
-          className={`${CHIP} border-white/10 text-zinc-500 hover:text-white disabled:opacity-50`}
+          className={`${CHIP} border-white/10 text-muted hover:text-white disabled:opacity-50`}
         >
           ✕
         </button>
@@ -94,7 +97,7 @@ export default function HintButton({
       className={`${CHIP} ${
         state === "error"
           ? "border-[#e53e3e]/60 text-[#e53e3e] hover:bg-[#e53e3e]/10"
-          : "border-white/10 text-zinc-500 hover:border-[#d4a017]/60 hover:text-[#d4a017]"
+          : "border-white/10 text-muted hover:border-[#d4a017]/60 hover:text-[#d4a017]"
       }`}
     >
       {state === "error" ? "⚠ retry" : `💡 −${cost}`}

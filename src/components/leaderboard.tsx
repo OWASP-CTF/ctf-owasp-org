@@ -57,7 +57,7 @@ function RankChip({ rank }: { rank: number }) {
 function AppBreakdown({ entry }: { entry: LeaderboardEntry }) {
   const attempted = appList.filter((app) => entry.apps[app.id]);
   if (attempted.length === 0) {
-    return <p className="text-sm text-zinc-500">No app breakdown reported yet.</p>;
+    return <p className="text-sm text-muted">No app breakdown reported yet.</p>;
   }
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -71,7 +71,7 @@ function AppBreakdown({ entry }: { entry: LeaderboardEntry }) {
             </p>
             <p className="font-mono text-sm tabular-nums text-white">
               {progress.patched}
-              <span className="ml-1 text-xs text-zinc-500">/ {progress.total} patched</span>
+              <span className="ml-1 text-xs text-muted">/ {progress.total} patched</span>
             </p>
             <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-white/[0.06]">
               <div className="h-full rounded-full" style={{ width: `${pct}%`, background: app.accent }} />
@@ -90,7 +90,7 @@ function LegacyBreakdown({ entry }: { entry: LeaderboardEntry }) {
         {entry.patched} patched / {entry.total} attempted
       </span>
       {entry.lastPr != null && <span>PR #{entry.lastPr}</span>}
-      {entry.lastSha && <span className="font-mono text-xs text-zinc-500">{entry.lastSha.slice(0, 7)}</span>}
+      {entry.lastSha && <span className="font-mono text-xs text-muted">{entry.lastSha.slice(0, 7)}</span>}
     </div>
   );
 }
@@ -133,7 +133,7 @@ function EntryRow({
                 </span>
               )}
               {isOwn && (
-                <span className="flex-none rounded border border-[#2563eb]/50 bg-[#2563eb]/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[#2563eb]">
+                <span className="flex-none rounded border border-[#2563eb]/50 bg-[#2563eb]/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-[var(--accent-blue-link)]">
                   you
                 </span>
               )}
@@ -151,7 +151,7 @@ function EntryRow({
               <p className="font-mono text-base font-bold tabular-nums text-white">
                 {entry.points.toLocaleString()}
               </p>
-              <p className="text-[11px] uppercase tracking-wide text-zinc-500">pts</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted">pts</p>
               {entry.hintPenalty ? (
                 <p className="font-mono text-[10px] tabular-nums text-[#d4a017]/80" title="Points spent on hints (already deducted)">
                   −{entry.hintPenalty} hints
@@ -160,16 +160,16 @@ function EntryRow({
             </div>
             <div className="hidden sm:block">
               <p className="font-mono text-base tabular-nums text-[#22c55e]">{entry.patched}</p>
-              <p className="text-[11px] uppercase tracking-wide text-zinc-500">patched</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted">patched</p>
             </div>
             <div className="hidden sm:block">
               <p className="font-mono text-base tabular-nums text-zinc-300">
                 {Math.max(0, entry.total - entry.patched)}
               </p>
-              <p className="text-[11px] uppercase tracking-wide text-zinc-500">non-patched</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted">non-patched</p>
             </div>
             <svg
-              className={`text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+              className={`text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
               width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
               aria-hidden="true"
             >
@@ -180,7 +180,7 @@ function EntryRow({
 
         {isOpen && (
           <div className="mt-4 border-t border-white/[0.06] pt-4">
-            <div className="mb-3 flex items-center justify-between text-xs text-zinc-500">
+            <div className="mb-3 flex items-center justify-between text-xs text-muted">
               <span className="uppercase tracking-wider">
                 {capabilities.apps ? "App breakdown" : "Summary"}
               </span>
@@ -219,14 +219,14 @@ function TeamRow({ team, topPoints, isOpen, onToggle }: { team: TeamStanding; to
               <p className="font-mono text-base font-bold tabular-nums text-white">
                 {team.points.toLocaleString()}
               </p>
-              <p className="text-[11px] uppercase tracking-wide text-zinc-500">pts</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted">pts</p>
             </div>
             <div className="hidden sm:block">
               <p className="font-mono text-base tabular-nums text-zinc-300">{team.members.length}</p>
-              <p className="text-[11px] uppercase tracking-wide text-zinc-500">members</p>
+              <p className="text-[11px] uppercase tracking-wide text-muted">members</p>
             </div>
             <svg
-              className={`text-zinc-500 transition-transform ${isOpen ? "rotate-180" : ""}`}
+              className={`text-muted transition-transform ${isOpen ? "rotate-180" : ""}`}
               width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
               aria-hidden="true"
             >
@@ -279,7 +279,7 @@ function EmptyBoard() {
       </div>
       <Link
         href="/challenges"
-        className="rounded-md border border-[#2563eb]/60 bg-[#2563eb]/10 px-4 py-2 font-mono text-sm text-[#2563eb] transition-colors hover:bg-[#2563eb]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
+        className="rounded-md border border-[#2563eb]/60 bg-[#2563eb]/10 px-4 py-2 font-mono text-sm text-[var(--accent-blue-link)] transition-colors hover:bg-[#2563eb]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb]"
       >
         $ pick a challenge
       </Link>
@@ -296,7 +296,7 @@ function NoMatch({ noun, query, onClear }: { noun: string; query: string; onClea
         No {noun} matching <span className="font-mono text-white">&ldquo;{query}&rdquo;</span> on the
         board yet.
       </p>
-      <p className="text-sm text-zinc-500">Double-check the spelling, or take another look at everyone.</p>
+      <p className="text-sm text-muted">Double-check the spelling, or take another look at everyone.</p>
       <button
         type="button"
         onClick={onClear}
@@ -360,7 +360,7 @@ export default function Leaderboard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full sm:max-w-xs">
           <svg
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted"
             width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
           >
             <circle cx="11" cy="11" r="7" />
@@ -368,11 +368,13 @@ export default function Leaderboard({
           </svg>
           <input
             type="search"
+            id="leaderboard-search"
+            name="leaderboard-search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={view === "individual" ? "Search contestants…" : "Search teams…"}
             aria-label="Search leaderboard"
-            className="w-full rounded-md border border-white/10 bg-white/[0.03] py-2 pl-9 pr-3 text-sm text-white placeholder:text-zinc-500 focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
+            className="w-full rounded-md border border-white/10 bg-white/[0.03] py-2 pl-9 pr-3 text-sm text-white placeholder:text-muted focus-visible:border-[#2563eb]/60 focus-visible:outline-none"
           />
         </div>
 
@@ -386,7 +388,7 @@ export default function Leaderboard({
                 aria-pressed={view === v}
                 className={`rounded-full border px-3 py-1 text-xs font-medium capitalize transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563eb] ${
                   view === v
-                    ? "border-[#2563eb] bg-[#2563eb]/10 text-[#2563eb]"
+                    ? "border-[#2563eb] bg-[#2563eb]/10 text-[var(--accent-blue-link)]"
                     : "border-white/10 text-zinc-400 hover:text-white"
                 }`}
               >
@@ -399,7 +401,7 @@ export default function Leaderboard({
       )}
 
       {view === "individual" && data.entries.length > 0 && (
-        <div className="flex items-center gap-4 px-1 text-xs uppercase tracking-wider text-zinc-500">
+        <div className="flex items-center gap-4 px-1 text-xs uppercase tracking-wider text-muted">
           <span>Sort:</span>
           {(["rank", "points", "patched"] as SortKey[]).map((key) => (
             <button
@@ -453,7 +455,7 @@ export default function Leaderboard({
       )}
 
       {!boardIsEmpty && (
-        <p className="px-1 text-xs text-zinc-600">
+        <p className="px-1 text-xs text-muted">
           {view === "individual"
             ? `Showing ${visibleEntries.length} of ${data.entries.length} contestants`
             : `Showing ${visibleTeams.length} of ${data.teams.length} teams`}

@@ -8,7 +8,9 @@ export default function PageHeader({
 }: {
   eyebrow: string;
   title: string;
-  description?: string;
+  // ReactNode rather than string so a lede can carry an inline link — several
+  // pages point at the Discord or a policy document from the header copy.
+  description?: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3">
