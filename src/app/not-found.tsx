@@ -26,7 +26,7 @@ export default function NotFound() {
           <PageHeader
             eyebrow="404"
             title="No such route"
-            description="That page doesn't exist. Nothing is broken on your end — the link is just wrong or out of date."
+            description="That page doesn't exist. Nothing is broken on your end. The link is just wrong or out of date."
           />
 
           <div className="rounded-lg border border-white/[0.06] bg-[#12121e] px-6 py-3.5 font-mono text-sm text-muted">

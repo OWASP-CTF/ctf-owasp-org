@@ -273,7 +273,7 @@ function EmptyBoard() {
           The board is wide open
         </h2>
         <p className="mx-auto max-w-md text-sm text-zinc-400">
-          No flags captured yet. Every rank is unclaimed — patch your first challenge and
+          No flags captured yet. Every rank is unclaimed. Patch your first challenge and
           you&rsquo;ll be the one everyone else is chasing.
         </p>
       </div>
