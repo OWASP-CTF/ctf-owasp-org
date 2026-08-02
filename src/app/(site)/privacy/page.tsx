@@ -316,10 +316,15 @@ export default function PrivacyPage() {
           <ExternalLink href={event.owaspPrivacyUrl}>OWASP Privacy Policy</ExternalLink>,
           which also sets out the rights available to you, including the additional rights of
           EEA and California residents. For CTF-specific data such as team membership or hint
-          purchases, an organizer in the{" "}
-          <ExternalLink href={event.discordUrl}>CTF Discord</ExternalLink> can usually sort it
-          out faster. One honest caveat: removing your scores from the leaderboard means
-          withdrawing from the competition.
+          purchases, email the organizers at{" "}
+          <a href={`mailto:${event.contactEmail}`} className="ds-link font-mono">
+            {event.contactEmail}
+          </a>
+          , or ask an organizer in the{" "}
+          <ExternalLink href={event.discordUrl}>CTF Discord</ExternalLink> if you want it dealt
+          with faster. You never have to join Discord to exercise a right over your own data.
+          One honest caveat: removing your scores from the leaderboard means withdrawing from
+          the competition.
         </p>
       </Card>
 
