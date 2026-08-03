@@ -29,6 +29,10 @@ export const event = {
   // OWASP publishes no Terms of Service; the General Disclaimer is the analogue.
   owaspDisclaimerUrl: "https://policy.owasp.org/operational/general-disclaimer",
   defconCodeOfConductUrl: "https://defcon.org/html/links/dc-code-of-conduct.html",
+  // The CTF team's own inbox: the one address on this site that reaches the
+  // organizers rather than the Foundation or DEF CON. Use it for anything that
+  // needs a private, written channel and shouldn't go in a public Discord.
+  contactEmail: "defcon-ctf@owasp.org",
   // As published on the OWASP privacy policy — note .com, not .org.
   privacyContactEmail: "privacy@owasp.com",
   defconSafetyEmail: "safety@defcon.org",

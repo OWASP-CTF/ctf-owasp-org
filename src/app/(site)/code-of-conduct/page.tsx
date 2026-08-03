@@ -120,6 +120,18 @@ export default function CodeOfConductPage() {
               scorer.
             </span>
           </li>
+          <li className="flex gap-3 text-sm leading-relaxed text-zinc-400">
+            <span className="mt-2 h-1.5 w-1.5 flex-none rounded-full bg-[#e53e3e]" />
+            <span>
+              <span className="font-semibold text-white">In writing, and in private</span>:{" "}
+              <a href={`mailto:${event.contactEmail}`} className="font-mono ds-link">
+                {event.contactEmail}
+              </a>
+              . This reaches the CTF organizers directly. Use it if the report involves someone
+              you would rather not approach in person, or if you want a written record instead
+              of a conversation in a shared Discord.
+            </span>
+          </li>
         </ul>
       </section>
 

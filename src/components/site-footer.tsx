@@ -39,9 +39,10 @@ export default function SiteFooter() {
         </div>
 
         {/* Policy routes sit in their own quieter row rather than in navLinks,
-            which drives the header. */}
+            which drives the header. The contact address rides along here so
+            there is a way to reach the organizers from every page. */}
         <nav
-          aria-label="Policies"
+          aria-label="Policies and contact"
           className="flex flex-wrap gap-x-5 gap-y-2 border-t border-white/[0.06] pt-5"
         >
           {legalLinks.map((link) => (
@@ -53,6 +54,12 @@ export default function SiteFooter() {
               {link.label}
             </Link>
           ))}
+          <a
+            href={`mailto:${event.contactEmail}`}
+            className="text-xs text-muted transition-colors hover:text-zinc-300"
+          >
+            Contact
+          </a>
         </nav>
       </div>
     </footer>
