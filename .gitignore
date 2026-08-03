@@ -48,6 +48,7 @@ next-env.d.ts
 # looking to disrupt the CTF, before the fixes ship. Keep them local, land the
 # fixes, and write up anything worth sharing after the event.
 THREAT_MODEL.md
+SECURITY-HANDOFF.md
 VULN-FINDINGS.json
 VULN-FINDINGS.md
 TRIAGE.json

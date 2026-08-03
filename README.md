@@ -105,6 +105,22 @@ public/
   owasp-logo.png              # OWASP logo (rendered inverted on dark backgrounds)
 ```
 
+## Authentication surface
+
+Sign-in is GitHub OAuth through better-auth, with **no `database`** configured: sessions live entirely in a JWE-encrypted cookie, and that cookie is therefore the identity. There is no server-side session store to check it against.
+
+That matters because better-auth mounts its **entire default endpoint set** behind the catch-all at `src/app/api/auth/[...all]`, whether or not the app uses any of it. This app calls exactly four: `/sign-in/social`, `/callback/:id`, `/get-session`, `/sign-out`. Everything else is closed with `disabledPaths` in `src/lib/auth.ts`.
+
+The one that mattered was `POST /update-user`. It takes an arbitrary JSON body behind nothing but `sessionMiddleware`, runs it through `parseUserInput` — which accepts any additional field not marked `input: false`, i.e. `login` — and with no database falls through to a `?? { ...session.user, ...additionalFields }` fallback that re-signs the session cookie. Any signed-in contestant could `POST {"login":"someone-else"}` and thereafter be treated as that person by all six handlers that key writes off `session.user.login`: hint purchases would bill their points, team joins and leaves would move them around.
+
+Three things to know before touching that config:
+
+- **Do not "harden" `login` to `input: false`.** better-auth's `parseAdditionalUserInputFromProviderProfile` skips `input: false` fields when mapping the OAuth profile, which leaves `session.user.login` undefined and breaks the `/profile` gate. The protection comes from the path being closed, not from the flag.
+- **`disabledPaths` matches literal pathnames**, not route patterns. `/reset-password/:token` can never be closed this way; a real request arrives as `/reset-password/abc123`. Listing the pattern would look like protection and be none.
+- **It guards HTTP only.** A server-side `auth.api.updateUser()` call bypasses it. No app code makes one; that is an invariant, not something the setting enforces.
+
+`src/lib/__tests__/auth.test.ts` fails if a better-auth upgrade or a new plugin introduces a default endpoint that is neither in use nor closed, which is the failure a hand-maintained list cannot catch on its own.
+
 ## Leaderboard Data Sources
 
 `LEADERBOARD_SOURCE` swaps the backend without touching any UI code:
@@ -152,7 +168,21 @@ Until the conference starts, `/challenges` can be locked behind a shared passwor
 
 How it works: the proxy (`src/proxy.ts`) redirects visitors without a valid signed cookie to `/gate`, which POSTs the password to `/api/gate`. Verification is entirely server-side (constant-time compare; the password never reaches the client bundle), and success sets an HMAC-signed, httpOnly cookie good for 30 days.
 
-Brute-force throttle: five wrong attempts from one IP lock that IP for 24 hours (`pk=GATE` items in the DynamoDB table). Locked attempts are rejected before the password is even compared, so the right password won't unlock a locked IP either. Caveat: everyone behind one NAT (an office, a hotel) shares an IP — five collective failures lock them all. If DynamoDB is unreachable the gate fails closed.
+Brute-force throttle: five attempts from one IP, then that IP is locked for 24 hours (`pk=GATE` items in the DynamoDB table). Locked attempts are rejected before the password is even compared, so the right password won't unlock a locked IP either. If DynamoDB is unreachable the gate fails closed.
+
+The attempt is **charged before the password is compared**, as one conditional write. That ordering is the point: reading the counter, deciding, comparing, and only then writing left four statements with nothing serialising concurrent same-IP requests, so a burst of parallel POSTs all saw the same pre-burst counter and all reached the compare. The throttle bounded sequential guessing and nothing else. Two consequences of the fix worth knowing:
+
+- **A successful attempt spends budget too**, and gets it back only when the post-success delete lands (retried once). If that delete fails, the caller still receives their 30-day unlock cookie and is through — but a *second* unlock from that IP may be refused until the window lapses.
+- **Concurrent successful unlocks from one IP can contend.** Six people behind one NAT unlocking in the same instant can drive the counter to the cap before any of their refunds land, and the last of them sees a spurious 429. Retrying works, because the refunds delete the item.
+
+Caveat that predates all of this: everyone behind one NAT (an office, a hotel, a conference) shares an IP, so five collective failures lock them all, and there is no self-service recovery. To clear one IP by hand:
+
+```bash
+aws dynamodb delete-item --table-name ctf-leaderboard --region us-west-2 \
+  --key '{"pk":{"S":"GATE"},"sk":{"S":"IP#203.0.113.9"}}'
+```
+
+The fastest fix during the event is not that command, though — it is turning the gate off (see Rollout below), which is the plan anyway once doors open.
 
 Retention: those items hold a client IP, so each one carries a `ttl` attribute set 30 days out (epoch **seconds**). The 24h lock window is still enforced on read — DynamoDB only reaps expired items on a best-effort basis, typically within 48h, which is far too loose to enforce a lock. The TTL is purely a retention bound; the throttle is correct whether or not the reaper has run.
 
