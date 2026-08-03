@@ -21,11 +21,33 @@ export interface LeaderboardSource {
  *  - "upstash" — direct read of the CURRENT real Upstash schema (read-only
  *                token) — aggregates only, no teams, no per-app breakdown.
  */
-export type LeaderboardSourceMode = "mock" | "lambda" | "dynamo" | "upstash";
+const VALID_MODES = ["mock", "lambda", "dynamo", "upstash"] as const;
+
+export type LeaderboardSourceMode = (typeof VALID_MODES)[number];
+
+function isValidMode(value: string | undefined): value is LeaderboardSourceMode {
+  return (VALID_MODES as readonly string[]).includes(value ?? "");
+}
+
+/** Unrecognised values are only ever warned about once each. Unlike
+ *  CTF_DATA_BACKEND, which is resolved at module load, this runs per request. */
+const warnedValues = new Set<string>();
 
 export function getLeaderboardSourceMode(): LeaderboardSourceMode {
   const mode = process.env.LEADERBOARD_SOURCE;
-  return mode === "lambda" || mode === "dynamo" || mode === "upstash" ? mode : "mock";
+  if (isValidMode(mode)) return mode;
+  // A typo here fails toward placeholder data rather than toward an error, so
+  // say so loudly. "dynamodb" for "dynamo" is the easy one to get wrong, and
+  // the only other signal is the amber banner on /leaderboard.
+  if (mode && !warnedValues.has(mode)) {
+    warnedValues.add(mode);
+    console.warn(
+      `[leaderboard] unknown LEADERBOARD_SOURCE "${mode}" — falling back to "mock", ` +
+        `so the board will serve placeholder data instead of real scores. ` +
+        `Valid values: ${VALID_MODES.join(", ")}.`,
+    );
+  }
+  return "mock";
 }
 
 export function getLeaderboardSource(): LeaderboardSource {
