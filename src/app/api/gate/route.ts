@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { GATE_COOKIE, GATE_COOKIE_MAX_AGE, isGateActive, signGateCookie, verifyGatePassword } from "@/lib/gate";
-import { clearGateThrottle, gateLockRemainingSeconds, getGateThrottle, recordGateFailure } from "@/lib/dynamo-gate-store";
+import { clearGateThrottle, consumeGateAttempt } from "@/lib/dynamo-gate-store";
 
 /** Unlocks the pre-event challenges gate. The password only ever exists
- *  server-side; the per-IP throttle is checked BEFORE the compare, so a locked
- *  client can neither guess nor extend its own lock. Success answers with the
- *  signed unlock cookie the proxy checks. */
+ *  server-side; one attempt is CHARGED against the per-IP budget before the
+ *  compare happens, so a burst of concurrent requests cannot all slip past the
+ *  same pre-burst counter. Success answers with the signed unlock cookie the
+ *  proxy checks. */
 export async function POST(request: NextRequest) {
   if (!isGateActive()) return NextResponse.json({ error: "not found" }, { status: 404 });
 
@@ -18,35 +19,35 @@ export async function POST(request: NextRequest) {
   if (!password) return NextResponse.json({ error: "Password is required" }, { status: 400 });
 
   const now = Date.now();
-  let throttle;
+  let verdict;
   try {
-    throttle = await getGateThrottle(ip);
+    verdict = await consumeGateAttempt(ip, now);
   } catch (err) {
-    // Fail closed: with the throttle unreadable, nobody gets to guess.
-    console.error(`[gate] throttle read failed: ${(err as Error).message}`);
+    // Fail closed: if the budget cannot be charged, nobody gets to guess. This
+    // is also why the charge cannot be made best-effort — a swallowed write
+    // error would hand back an unmetered compare.
+    console.error(`[gate] throttle charge failed: ${(err as Error).message}`);
     return NextResponse.json({ error: "Try again later" }, { status: 500 });
   }
 
-  const lockedFor = gateLockRemainingSeconds(throttle, now);
-  if (lockedFor > 0) {
+  if (!verdict.allowed) {
     return NextResponse.json(
       { error: "Too many attempts. Try again later." },
-      { status: 429, headers: { "Retry-After": String(lockedFor) } },
+      { status: 429, headers: { "Retry-After": String(verdict.retryAfterSeconds) } },
     );
   }
 
   if (!verifyGatePassword(password)) {
-    try {
-      await recordGateFailure(ip, throttle, now);
-    } catch (err) {
-      // The failed attempt still gets its 401 even if the bookkeeping write
-      // fails; the next read will just see one fewer failure.
-      console.error(`[gate] throttle write failed: ${(err as Error).message}`);
-    }
+    // Already charged above; nothing left to record.
     return NextResponse.json({ error: "Invalid password" }, { status: 401 });
   }
 
-  await clearGateThrottle(ip);
+  // Refund the budget this attempt just spent. Best-effort by contract: the
+  // unlock cookie below is what the caller actually needs, and it is issued
+  // whether or not the refund lands.
+  if (!(await clearGateThrottle(ip))) {
+    console.error("[gate] unlocked but budget not refunded; a second unlock from this IP may 429");
+  }
   const res = NextResponse.json({ ok: true });
   res.cookies.set(GATE_COOKIE, signGateCookie(now + GATE_COOKIE_MAX_AGE * 1000), {
     httpOnly: true,
