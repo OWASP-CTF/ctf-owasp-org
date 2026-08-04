@@ -83,7 +83,7 @@ const faqs: QA[] = [
   },
   {
     q: "Can I retry a challenge I didn't solve?",
-    a: "Yes, as many times as you like. Push another commit and it re-scores. Your best-ever result per challenge counts, so a later fix replaces an earlier miss and you can never lose points you've already banked. Note that every push re-runs that app's whole rubric, so a patch that breaks a challenge you'd already solved will cost you those points until you fix it.",
+    a: "Yes, as many times as you like. Push another commit and it re-scores. Your best-ever result per challenge counts, so a later fix replaces an earlier miss and you can never lose points you've already banked, even if a later patch breaks a challenge you'd already solved.",
   },
   {
     q: "Is there a prize?",
