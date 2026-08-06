@@ -22,20 +22,28 @@ export default function FaqAccordion({ items }: { items: QA[] }) {
   // browser has already done its native scroll to a still-collapsed <li>. Open
   // the panel, then re-scroll now that it has its expanded height.
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     function openFromHash() {
       const index = indexForHash(items, window.location.hash);
       if (index === null) return;
       setOpen(index);
-      // One frame later the grid-rows transition has begun and the item is no
-      // longer zero-height, so centring it lands where the reader expects.
-      requestAnimationFrame(() => {
+      // Cancel any scroll still pending from a previous hashchange before
+      // scheduling this one, so they can't land out of order.
+      clearTimeout(timer);
+      // The panel's grid-rows transition runs 200ms (duration-200 on the grid
+      // div below); scrolling before it finishes centres the still-collapsed
+      // row. Wait it out, then centre.
+      timer = setTimeout(() => {
         listRef.current?.children[index]?.scrollIntoView({ block: "center" });
-      });
+      }, 200);
     }
     openFromHash();
     // Same-page anchor clicks fire hashchange without a remount.
     window.addEventListener("hashchange", openFromHash);
-    return () => window.removeEventListener("hashchange", openFromHash);
+    return () => {
+      window.removeEventListener("hashchange", openFromHash);
+      clearTimeout(timer);
+    };
   }, [items]);
 
   return (
