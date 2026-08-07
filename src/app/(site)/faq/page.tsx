@@ -153,7 +153,13 @@ const alliedOps: QA = {
         Blue Team Village encrypted that evidence file. This is the key that opens it.
       </p>
       <div className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-[#12121e] p-4">
-        <code className="min-w-0 flex-1 break-all font-mono text-sm text-[#22c55e]">
+        {/* `white-space: pre-wrap` because a run of internal spaces in the
+            passphrase would otherwise collapse to one on screen — invisible
+            here, but CopyButton still copies the exact raw string, so a
+            player reading (not copying) the key would retype the wrong
+            value. `break-all` still soft-wraps long tokens; pre-wrap adds no
+            characters, so manual select-and-copy stays byte-for-byte exact. */}
+        <code className="min-w-0 flex-1 whitespace-pre-wrap break-all font-mono text-sm text-[#22c55e]">
           {alliedOpsKey}
         </code>
         <CopyButton value={alliedOpsKey} />
