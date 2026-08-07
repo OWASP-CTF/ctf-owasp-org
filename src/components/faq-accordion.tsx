@@ -5,16 +5,49 @@
 // assistive tech. Question and answer live inside ONE card so an open answer
 // reads as part of its question instead of floating on the page background.
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { indexForHash } from "@/lib/faq-anchor";
 
-export type QA = { q: string; a: React.ReactNode };
+/** `id` is optional and only set on questions worth deep linking to — it becomes
+ *  the <li> anchor, so /faq#<id> opens that panel. */
+export type QA = { q: string; a: React.ReactNode; id?: string };
 
 export default function FaqAccordion({ items }: { items: QA[] }) {
   const [open, setOpen] = useState<number | null>(0);
   const base = useId();
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // Deep links like /faq#allied-ops. The hash is never sent to the server, so
+  // the matching panel can only be opened after hydration — by which point the
+  // browser has already done its native scroll to a still-collapsed <li>. Open
+  // the panel, then re-scroll now that it has its expanded height.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function openFromHash() {
+      const index = indexForHash(items, window.location.hash);
+      if (index === null) return;
+      setOpen(index);
+      // Cancel any scroll still pending from a previous hashchange before
+      // scheduling this one, so they can't land out of order.
+      clearTimeout(timer);
+      // The panel's grid-rows transition runs 200ms (duration-200 on the grid
+      // div below); scrolling before it finishes centres the still-collapsed
+      // row. Wait it out, then centre.
+      timer = setTimeout(() => {
+        listRef.current?.children[index]?.scrollIntoView({ block: "center" });
+      }, 200);
+    }
+    openFromHash();
+    // Same-page anchor clicks fire hashchange without a remount.
+    window.addEventListener("hashchange", openFromHash);
+    return () => {
+      window.removeEventListener("hashchange", openFromHash);
+      clearTimeout(timer);
+    };
+  }, [items]);
 
   return (
-    <ul className="flex flex-col gap-2.5">
+    <ul ref={listRef} className="flex flex-col gap-2.5">
       {items.map((item, i) => {
         const isOpen = open === i;
         const buttonId = `${base}-q${i}`;
@@ -22,6 +55,7 @@ export default function FaqAccordion({ items }: { items: QA[] }) {
         return (
           <li
             key={i}
+            id={item.id}
             className={`ds-card overflow-hidden rounded-lg border bg-[#16162a] transition-colors ${
               isOpen ? "border-[#2563eb]/40" : "border-white/[0.06] hover:border-[#2563eb]/40"
             }`}
