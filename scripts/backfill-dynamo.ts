@@ -12,8 +12,14 @@
 // the auth callback hook owns that partition and first-sign-in-wins means a
 // backfill re-run must never move a real registeredAt.
 //
-//   pnpm backfill:dynamo            # dry run
-//   pnpm backfill:dynamo --apply    # write
+//   pnpm backfill:dynamo                              # dry run
+//   pnpm backfill:dynamo --apply                      # write everything
+//   pnpm backfill:dynamo --contestants-only --apply   # write ONLY pk=CONTESTANTS
+//
+// --contestants-only is the mid-contest-safe mode: it drops every overwrite
+// item and keeps only the conditional contestant rows, which are additive by
+// construction — they cannot change team, hint, spend, or scorer state, and
+// cannot touch a registration the auth hook already wrote.
 //
 // Credentials: Upstash from .env.local (or the environment); AWS from the SDK
 // default chain — run `aws sso login --profile AWSAdministratorAccess-942548380662`
@@ -54,6 +60,7 @@ const AWS_REGION = process.env.CTF_AWS_REGION ?? "us-west-2";
 const TABLE = process.env.CTF_DYNAMO_TABLE ?? "ctf-leaderboard";
 const HINT_COST = 10; // purchase items get the current price; the spend total below is the authoritative number
 const APPLY = process.argv.includes("--apply");
+const CONTESTANTS_ONLY = process.argv.includes("--contestants-only");
 
 if (!UPSTASH_URL || !UPSTASH_TOKEN) {
   console.error("UPSTASH_REDIS_REST_URL/TOKEN are not set (env or .env.local)");
@@ -190,7 +197,11 @@ async function collect(): Promise<DynamoItem[]> {
 
 // ---- write ------------------------------------------------------------------
 async function main() {
-  const items = await collect();
+  let items = await collect();
+  if (CONTESTANTS_ONLY) {
+    items = items.filter((item) => item.pk.S === CONTESTANTS_PK);
+    console.log(`\n--contestants-only: keeping ${items.length} conditional contestant rows, dropping every overwrite item`);
+  }
   console.log(`\n${items.length} DynamoDB items total → table "${TABLE}" (${AWS_REGION})`);
 
   if (!APPLY) {

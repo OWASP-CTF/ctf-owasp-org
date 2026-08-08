@@ -55,6 +55,11 @@ pnpm backfill:dynamo
 # 2. Apply: same collection, then writes to DynamoDB.
 aws sso login --profile AWSAdministratorAccess-942548380662
 AWS_PROFILE=AWSAdministratorAccess-942548380662 pnpm backfill:dynamo --apply
+
+# Mid-contest: register pre-hook sign-ins WITHOUT touching live data.
+# Drops every overwrite item and writes only the conditional pk=CONTESTANTS
+# rows, which are additive by construction.
+AWS_PROFILE=AWSAdministratorAccess-942548380662 pnpm backfill:dynamo --contestants-only --apply
 ```
 
 Read the dry run before applying — sanity-check the `teams:`, `hint spend
@@ -73,3 +78,7 @@ written from skips.
   contestant rows are never clobbered. The one caveat: once `dynamo` mode is
   authoritative and teams have diverged from Upstash, an `--apply` would drag
   team/profile items back to the stale Upstash view — check drift first.
+- **While the contest is live, prefer `--contestants-only`**: the full run's
+  overwrite items race against in-flight team/hint writes (a spend total
+  collected from Upstash moments ago can land on top of a purchase that just
+  happened), while contestant rows cannot conflict with anything.
