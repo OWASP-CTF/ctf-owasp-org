@@ -6,17 +6,53 @@
 // dry run that prints what would be written). Idempotent — items are plain
 // PutItems keyed the same way every run, so re-running just overwrites them.
 //
-//   pnpm backfill:dynamo            # dry run
-//   pnpm backfill:dynamo --apply    # write
+// Exception: pk=CONTESTANTS items (every login seen on a team or in hint
+// activity — proof they signed in before the sign-in hook existed) are
+// written with attribute_not_exists(pk) and skipped when present, because
+// the auth callback hook owns that partition and first-sign-in-wins means a
+// backfill re-run must never move a real registeredAt. Those logins are
+// collected from BOTH stores: in CTF_DATA_BACKEND=dynamo mode the traces
+// only exist in the table, so contestant collection also READS DynamoDB —
+// meaning even a dry run needs AWS credentials now.
+//
+//   pnpm backfill:dynamo                              # dry run
+//   pnpm backfill:dynamo --apply                      # write everything
+//   pnpm backfill:dynamo --contestants-only --apply   # write ONLY pk=CONTESTANTS
+//
+// --contestants-only is the mid-contest-safe mode: it drops every overwrite
+// item and keeps only the conditional contestant rows, which are additive by
+// construction — they cannot change team, hint, spend, or scorer state, and
+// cannot touch a registration the auth hook already wrote.
 //
 // Credentials: Upstash from .env.local (or the environment); AWS from the SDK
-// default chain — run `aws sso login --profile AWSAdministratorAccess-942548380662`
+// default chain — run `aws sso login --profile <your-admin-sso-profile>`
 // and set AWS_PROFILE first. Run this BEFORE enabling dual/dynamo in prod.
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
-import { hintPurchaseItem, hintTextItem, profileItem, spendItem, teamItem, type DynamoItem } from "../src/lib/dynamo-shapes";
+import {
+  ConditionalCheckFailedException,
+  DynamoDBClient,
+  PutItemCommand,
+  QueryCommand,
+  ScanCommand,
+  type AttributeValue,
+} from "@aws-sdk/client-dynamodb";
+import {
+  CONTESTANTS_PK,
+  HINTSPEND_PK,
+  PROFILE_SK,
+  TEAMS_PK,
+  contestantItem,
+  getS,
+  getSS,
+  hintPurchaseItem,
+  hintTextItem,
+  profileItem,
+  spendItem,
+  teamItem,
+  type DynamoItem,
+} from "../src/lib/dynamo-shapes";
 
 // ---- env ------------------------------------------------------------------
 // .env.local fallback, same idiom as the live Upstash test suites.
@@ -39,6 +75,7 @@ const AWS_REGION = process.env.CTF_AWS_REGION ?? "us-west-2";
 const TABLE = process.env.CTF_DYNAMO_TABLE ?? "ctf-leaderboard";
 const HINT_COST = 10; // purchase items get the current price; the spend total below is the authoritative number
 const APPLY = process.argv.includes("--apply");
+const CONTESTANTS_ONLY = process.argv.includes("--contestants-only");
 
 if (!UPSTASH_URL || !UPSTASH_TOKEN) {
   console.error("UPSTASH_REDIS_REST_URL/TOKEN are not set (env or .env.local)");
@@ -81,6 +118,10 @@ function hgetallToObject(flat: unknown): Record<string, string> {
 async function collect(): Promise<DynamoItem[]> {
   const now = new Date().toISOString();
   const items: DynamoItem[] = [];
+  // Every login that shows up below signed in at some point (team actions and
+  // hint purchases both authenticate), so each one also becomes a contestant
+  // registry item — that's what puts pre-hook players on /leaderboard.
+  const contestants = new Set<string>();
 
   // Teams: ctf:team:<slug> hash + ctf:team:<slug>:members set → team + profiles.
   const memberKeys = await scanKeys("ctf:team:*:members");
@@ -102,7 +143,10 @@ async function collect(): Promise<DynamoItem[]> {
         members,
       }),
     );
-    for (const login of members) items.push(profileItem(login, slug, now));
+    for (const login of members) {
+      items.push(profileItem(login, slug, now));
+      contestants.add(login);
+    }
   }
   console.log(`teams: ${slugs.length} (${items.length} items incl. member profiles)`);
 
@@ -114,6 +158,7 @@ async function collect(): Promise<DynamoItem[]> {
     const value = Number(points);
     if (!Number.isFinite(value) || value <= 0) continue;
     items.push(spendItem(login, value, now));
+    contestants.add(login);
     spendCount++;
   }
   console.log(`hint spend rows: ${spendCount}`);
@@ -125,6 +170,7 @@ async function collect(): Promise<DynamoItem[]> {
   let purchaseCount = 0;
   for (const key of hintKeys) {
     const login = key.slice("ctf:user:".length, -":hints".length);
+    contestants.add(login);
     const [membersRes] = await pipeline([["SMEMBERS", key]]);
     for (const member of Array.isArray(membersRes.result) ? (membersRes.result as string[]) : []) {
       const slash = member.indexOf("/");
@@ -154,12 +200,93 @@ async function collect(): Promise<DynamoItem[]> {
   }
   console.log(`hint texts: ${textCount} across ${textHashKeys.length} apps`);
 
+  // In CTF_DATA_BACKEND=dynamo mode, team and hint activity never touched
+  // Upstash — the traces live only in the table. Merge logins from there too
+  // (read-only), so contestant collection works whichever store was live.
+  const fromDynamo = await collectDynamoLogins();
+  for (const login of fromDynamo) contestants.add(login);
+
+  // Contestant registry rows come last so the counts above stay comparable to
+  // earlier runs. registeredAt = backfill time: the real first-sign-in moment
+  // was never recorded, and the conditional write below keeps any row the
+  // auth hook already created (with its truthful timestamp) untouched.
+  for (const login of [...contestants].sort()) items.push(contestantItem(login, now));
+  console.log(`contestants: ${contestants.size} (${fromDynamo.size} seen in DynamoDB traces)`);
+
   return items;
+}
+
+// ---- dynamo (read-only) -------------------------------------------------------
+async function collectDynamoLogins(): Promise<Set<string>> {
+  const dynamo = new DynamoDBClient({ region: AWS_REGION });
+  const logins = new Set<string>();
+
+  const paginate = async (
+    command: (startKey?: Record<string, AttributeValue>) => QueryCommand | ScanCommand,
+    onItem: (item: DynamoItem) => void,
+  ) => {
+    let startKey: Record<string, AttributeValue> | undefined;
+    do {
+      const res = await dynamo.send(command(startKey) as QueryCommand);
+      for (const item of res.Items ?? []) onItem(item as DynamoItem);
+      startKey = res.LastEvaluatedKey;
+    } while (startKey);
+  };
+
+  // Team members (pk=TEAMS holds the member String Sets).
+  await paginate(
+    (startKey) =>
+      new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: "pk = :pk",
+        ExpressionAttributeValues: { ":pk": { S: TEAMS_PK } },
+        ExclusiveStartKey: startKey,
+      }),
+    (item) => {
+      for (const member of getSS(item, "members")) logins.add(member);
+    },
+  );
+
+  // Hint spenders.
+  await paginate(
+    (startKey) =>
+      new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: "pk = :pk",
+        ExpressionAttributeValues: { ":pk": { S: HINTSPEND_PK } },
+        ExclusiveStartKey: startKey,
+      }),
+    (item) => {
+      const login = getS(item, "login");
+      if (login) logins.add(login);
+    },
+  );
+
+  // USER#<login> profiles (covers members whose team was since deleted).
+  await paginate(
+    (startKey) =>
+      new ScanCommand({
+        TableName: TABLE,
+        FilterExpression: "begins_with(pk, :u) AND sk = :profile",
+        ExpressionAttributeValues: { ":u": { S: "USER#" }, ":profile": { S: PROFILE_SK } },
+        ExclusiveStartKey: startKey,
+      }),
+    (item) => {
+      const login = getS(item, "login") ?? getS(item, "pk")?.slice("USER#".length);
+      if (login) logins.add(login);
+    },
+  );
+
+  return logins;
 }
 
 // ---- write ------------------------------------------------------------------
 async function main() {
-  const items = await collect();
+  let items = await collect();
+  if (CONTESTANTS_ONLY) {
+    items = items.filter((item) => item.pk.S === CONTESTANTS_PK);
+    console.log(`\n--contestants-only: keeping ${items.length} conditional contestant rows, dropping every overwrite item`);
+  }
   console.log(`\n${items.length} DynamoDB items total → table "${TABLE}" (${AWS_REGION})`);
 
   if (!APPLY) {
@@ -169,11 +296,30 @@ async function main() {
   }
 
   const dynamo = new DynamoDBClient({ region: AWS_REGION });
+  let skipped = 0;
   for (const item of items) {
-    await dynamo.send(new PutItemCommand({ TableName: TABLE, Item: item }));
+    // First-sign-in-wins for the contestant registry: the auth hook owns that
+    // partition, so the backfill only fills gaps and never overwrites.
+    const guarded = item.pk.S === CONTESTANTS_PK;
+    try {
+      await dynamo.send(
+        new PutItemCommand({
+          TableName: TABLE,
+          Item: item,
+          ...(guarded ? { ConditionExpression: "attribute_not_exists(pk)" } : {}),
+        }),
+      );
+    } catch (err) {
+      if (guarded && err instanceof ConditionalCheckFailedException) {
+        console.log(`skip ${item.pk.S} / ${item.sk.S} (already registered)`);
+        skipped++;
+        continue;
+      }
+      throw err;
+    }
     console.log(`put ${item.pk.S} / ${item.sk.S}`);
   }
-  console.log(`\nDone — ${items.length} items written.`);
+  console.log(`\nDone — ${items.length - skipped} items written, ${skipped} already-registered contestants kept.`);
 }
 
 main().catch((err) => {
