@@ -25,7 +25,7 @@
 // cannot touch a registration the auth hook already wrote.
 //
 // Credentials: Upstash from .env.local (or the environment); AWS from the SDK
-// default chain — run `aws sso login --profile AWSAdministratorAccess-942548380662`
+// default chain — run `aws sso login --profile <your-admin-sso-profile>`
 // and set AWS_PROFILE first. Run this BEFORE enabling dual/dynamo in prod.
 
 import { existsSync, readFileSync } from "node:fs";

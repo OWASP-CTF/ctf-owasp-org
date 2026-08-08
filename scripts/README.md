@@ -55,13 +55,13 @@ Never writes to the scorer-owned partitions (`pk=LEADERBOARD`,
 pnpm backfill:dynamo
 
 # 2. Apply: same collection, then writes to DynamoDB.
-aws sso login --profile AWSAdministratorAccess-942548380662
-AWS_PROFILE=AWSAdministratorAccess-942548380662 pnpm backfill:dynamo --apply
+aws sso login --profile <your-admin-sso-profile>
+AWS_PROFILE=<your-admin-sso-profile> pnpm backfill:dynamo --apply
 
 # Mid-contest: register pre-hook sign-ins WITHOUT touching live data.
 # Drops every overwrite item and writes only the conditional pk=CONTESTANTS
 # rows, which are additive by construction.
-AWS_PROFILE=AWSAdministratorAccess-942548380662 pnpm backfill:dynamo --contestants-only --apply
+AWS_PROFILE=<your-admin-sso-profile> pnpm backfill:dynamo --contestants-only --apply
 ```
 
 Read the dry run before applying — sanity-check the `teams:`, `hint spend

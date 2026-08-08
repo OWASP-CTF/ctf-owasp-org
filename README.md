@@ -229,8 +229,8 @@ pk=HINTS          sk=HINT#<app>#<id>    hint text, copied from the scorer-seeded
 **Credentials.** On Vercel there are no stored keys: deployments exchange a Vercel OIDC token for the `ctf-web-dynamodb` IAM role (trust + table policy live in the dc34 repo's `terraform/vercel-aws.tf`; the trust covers production + preview only). Locally the SDK default chain is used instead:
 
 ```
-aws sso login --profile AWSAdministratorAccess-942548380662
-AWS_PROFILE=AWSAdministratorAccess-942548380662 pnpm dev
+aws sso login --profile <your-admin-sso-profile>
+AWS_PROFILE=<your-admin-sso-profile> pnpm dev
 ```
 
 **Backfill.** Before enabling the mirror in an environment with existing Upstash data, copy it over once so mirrored joins find their team items: `pnpm backfill:dynamo` (dry run), then `pnpm backfill:dynamo --apply`. Idempotent and read-only against Upstash. It also copies the scorer-seeded `hints:<app>` text hashes into `pk=HINTS`, which `dynamo` mode serves hint text and availability from (Upstash remains the authority for hint text, so re-run the backfill after any hint re-seeding — in `dynamo` mode a stale `pk=HINTS` means new hints simply don't show), and registers every login it collects as a `pk=CONTESTANTS` leaderboard row (conditional write; the sign-in hook's rows are never overwritten). Full details: [scripts/README.md](scripts/README.md).
