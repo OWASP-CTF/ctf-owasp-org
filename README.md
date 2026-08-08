@@ -65,7 +65,7 @@ Copy `.env.example` to `.env.local` and fill in real values — none of these sh
 | `pnpm start` | Serve production build |
 | `pnpm lint` | Run ESLint |
 | `pnpm test` | Run the vitest suite (team + hint store unit tests; the live-Upstash and live-DynamoDB integration suites auto-skip without `UPSTASH_REDIS_REST_*` credentials / `AWS_PROFILE`) |
-| `pnpm backfill:dynamo` | Copy existing Upstash team/hint state into DynamoDB (dry run; add `--apply` to write) — run once before enabling the mirror in prod |
+| `pnpm backfill:dynamo` | Copy existing Upstash team/hint state into DynamoDB and register every login it sees as a leaderboard contestant (dry run; add `--apply` to write) — see [scripts/README.md](scripts/README.md) |
 
 ## Project Structure
 
@@ -233,7 +233,7 @@ aws sso login --profile AWSAdministratorAccess-942548380662
 AWS_PROFILE=AWSAdministratorAccess-942548380662 pnpm dev
 ```
 
-**Backfill.** Before enabling the mirror in an environment with existing Upstash data, copy it over once so mirrored joins find their team items: `pnpm backfill:dynamo` (dry run), then `pnpm backfill:dynamo --apply`. Idempotent and read-only against Upstash. It also copies the scorer-seeded `hints:<app>` text hashes into `pk=HINTS`, which `dynamo` mode serves hint text and availability from; Upstash remains the authority for hint text, so re-run the backfill after any hint re-seeding (in `dynamo` mode a stale `pk=HINTS` means new hints simply don't show).
+**Backfill.** Before enabling the mirror in an environment with existing Upstash data, copy it over once so mirrored joins find their team items: `pnpm backfill:dynamo` (dry run), then `pnpm backfill:dynamo --apply`. Idempotent and read-only against Upstash. It also copies the scorer-seeded `hints:<app>` text hashes into `pk=HINTS`, which `dynamo` mode serves hint text and availability from (Upstash remains the authority for hint text, so re-run the backfill after any hint re-seeding — in `dynamo` mode a stale `pk=HINTS` means new hints simply don't show), and registers every login it collects as a `pk=CONTESTANTS` leaderboard row (conditional write; the sign-in hook's rows are never overwritten). Full details: [scripts/README.md](scripts/README.md).
 
 ## Branding
 
