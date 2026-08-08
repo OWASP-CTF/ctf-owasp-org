@@ -23,7 +23,7 @@ table, and registers every login it sees as a contestant. Two jobs, one run:
 | `pk=HINTSPEND sk=AUTHOR#<login>` | `ctf:hints:spent` | overwrite |
 | `pk=USER#<login> sk=HINT#<app>#<id>` | `ctf:user:<login>:hints` | overwrite |
 | `pk=HINTS sk=HINT#<app>#<id>` | scorer-seeded `hints:<app>` | overwrite |
-| `pk=CONTESTANTS sk=AUTHOR#<login>` | union of all logins above | **conditional** — `attribute_not_exists(pk)` |
+| `pk=CONTESTANTS sk=AUTHOR#<login>` | union of all logins above **plus** logins traced in DynamoDB itself (`TEAMS` members, `HINTSPEND`, `USER#` profiles — required in `dynamo` mode, where activity never touched Upstash) | **conditional** — `attribute_not_exists(pk)` |
 
 The contestant rows are the one exception to the overwrite idiom: the auth
 hook owns that partition and first-sign-in-wins is the contract, so a
@@ -40,8 +40,10 @@ Never writes to the scorer-owned partitions (`pk=LEADERBOARD`,
 - **Upstash (read-only)**: `UPSTASH_REDIS_REST_URL` and
   `UPSTASH_REDIS_REST_TOKEN` in the environment or `.env.local`
   (`vercel env pull` puts them there).
-- **AWS (only for `--apply`)**: credentials via the SDK default chain —
-  `aws sso login` plus `AWS_PROFILE`. The dry run never touches AWS.
+- **AWS**: credentials via the SDK default chain — `aws sso login` plus
+  `AWS_PROFILE`. Needed for `--apply`, and now for the dry run too:
+  contestant collection reads the table (read-only) so it works in
+  `dynamo` mode, where team/hint traces never reached Upstash.
 - Table/region default to `ctf-leaderboard` / `us-west-2`; override with
   `CTF_DYNAMO_TABLE` / `CTF_AWS_REGION`.
 

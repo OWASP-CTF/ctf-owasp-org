@@ -10,7 +10,10 @@
 // activity — proof they signed in before the sign-in hook existed) are
 // written with attribute_not_exists(pk) and skipped when present, because
 // the auth callback hook owns that partition and first-sign-in-wins means a
-// backfill re-run must never move a real registeredAt.
+// backfill re-run must never move a real registeredAt. Those logins are
+// collected from BOTH stores: in CTF_DATA_BACKEND=dynamo mode the traces
+// only exist in the table, so contestant collection also READS DynamoDB —
+// meaning even a dry run needs AWS credentials now.
 //
 //   pnpm backfill:dynamo                              # dry run
 //   pnpm backfill:dynamo --apply                      # write everything
@@ -27,10 +30,22 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { ConditionalCheckFailedException, DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  ConditionalCheckFailedException,
+  DynamoDBClient,
+  PutItemCommand,
+  QueryCommand,
+  ScanCommand,
+  type AttributeValue,
+} from "@aws-sdk/client-dynamodb";
 import {
   CONTESTANTS_PK,
+  HINTSPEND_PK,
+  PROFILE_SK,
+  TEAMS_PK,
   contestantItem,
+  getS,
+  getSS,
   hintPurchaseItem,
   hintTextItem,
   profileItem,
@@ -185,14 +200,84 @@ async function collect(): Promise<DynamoItem[]> {
   }
   console.log(`hint texts: ${textCount} across ${textHashKeys.length} apps`);
 
+  // In CTF_DATA_BACKEND=dynamo mode, team and hint activity never touched
+  // Upstash — the traces live only in the table. Merge logins from there too
+  // (read-only), so contestant collection works whichever store was live.
+  const fromDynamo = await collectDynamoLogins();
+  for (const login of fromDynamo) contestants.add(login);
+
   // Contestant registry rows come last so the counts above stay comparable to
   // earlier runs. registeredAt = backfill time: the real first-sign-in moment
   // was never recorded, and the conditional write below keeps any row the
   // auth hook already created (with its truthful timestamp) untouched.
   for (const login of [...contestants].sort()) items.push(contestantItem(login, now));
-  console.log(`contestants: ${contestants.size}`);
+  console.log(`contestants: ${contestants.size} (${fromDynamo.size} seen in DynamoDB traces)`);
 
   return items;
+}
+
+// ---- dynamo (read-only) -------------------------------------------------------
+async function collectDynamoLogins(): Promise<Set<string>> {
+  const dynamo = new DynamoDBClient({ region: AWS_REGION });
+  const logins = new Set<string>();
+
+  const paginate = async (
+    command: (startKey?: Record<string, AttributeValue>) => QueryCommand | ScanCommand,
+    onItem: (item: DynamoItem) => void,
+  ) => {
+    let startKey: Record<string, AttributeValue> | undefined;
+    do {
+      const res = await dynamo.send(command(startKey) as QueryCommand);
+      for (const item of res.Items ?? []) onItem(item as DynamoItem);
+      startKey = res.LastEvaluatedKey;
+    } while (startKey);
+  };
+
+  // Team members (pk=TEAMS holds the member String Sets).
+  await paginate(
+    (startKey) =>
+      new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: "pk = :pk",
+        ExpressionAttributeValues: { ":pk": { S: TEAMS_PK } },
+        ExclusiveStartKey: startKey,
+      }),
+    (item) => {
+      for (const member of getSS(item, "members")) logins.add(member);
+    },
+  );
+
+  // Hint spenders.
+  await paginate(
+    (startKey) =>
+      new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: "pk = :pk",
+        ExpressionAttributeValues: { ":pk": { S: HINTSPEND_PK } },
+        ExclusiveStartKey: startKey,
+      }),
+    (item) => {
+      const login = getS(item, "login");
+      if (login) logins.add(login);
+    },
+  );
+
+  // USER#<login> profiles (covers members whose team was since deleted).
+  await paginate(
+    (startKey) =>
+      new ScanCommand({
+        TableName: TABLE,
+        FilterExpression: "begins_with(pk, :u) AND sk = :profile",
+        ExpressionAttributeValues: { ":u": { S: "USER#" }, ":profile": { S: PROFILE_SK } },
+        ExclusiveStartKey: startKey,
+      }),
+    (item) => {
+      const login = getS(item, "login") ?? getS(item, "pk")?.slice("USER#".length);
+      if (login) logins.add(login);
+    },
+  );
+
+  return logins;
 }
 
 // ---- write ------------------------------------------------------------------
