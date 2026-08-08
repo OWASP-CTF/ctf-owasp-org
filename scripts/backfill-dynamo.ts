@@ -6,6 +6,12 @@
 // dry run that prints what would be written). Idempotent — items are plain
 // PutItems keyed the same way every run, so re-running just overwrites them.
 //
+// Exception: pk=CONTESTANTS items (every login seen on a team or in hint
+// activity — proof they signed in before the sign-in hook existed) are
+// written with attribute_not_exists(pk) and skipped when present, because
+// the auth callback hook owns that partition and first-sign-in-wins means a
+// backfill re-run must never move a real registeredAt.
+//
 //   pnpm backfill:dynamo            # dry run
 //   pnpm backfill:dynamo --apply    # write
 //
@@ -15,8 +21,17 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
-import { hintPurchaseItem, hintTextItem, profileItem, spendItem, teamItem, type DynamoItem } from "../src/lib/dynamo-shapes";
+import { ConditionalCheckFailedException, DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import {
+  CONTESTANTS_PK,
+  contestantItem,
+  hintPurchaseItem,
+  hintTextItem,
+  profileItem,
+  spendItem,
+  teamItem,
+  type DynamoItem,
+} from "../src/lib/dynamo-shapes";
 
 // ---- env ------------------------------------------------------------------
 // .env.local fallback, same idiom as the live Upstash test suites.
@@ -81,6 +96,10 @@ function hgetallToObject(flat: unknown): Record<string, string> {
 async function collect(): Promise<DynamoItem[]> {
   const now = new Date().toISOString();
   const items: DynamoItem[] = [];
+  // Every login that shows up below signed in at some point (team actions and
+  // hint purchases both authenticate), so each one also becomes a contestant
+  // registry item — that's what puts pre-hook players on /leaderboard.
+  const contestants = new Set<string>();
 
   // Teams: ctf:team:<slug> hash + ctf:team:<slug>:members set → team + profiles.
   const memberKeys = await scanKeys("ctf:team:*:members");
@@ -102,7 +121,10 @@ async function collect(): Promise<DynamoItem[]> {
         members,
       }),
     );
-    for (const login of members) items.push(profileItem(login, slug, now));
+    for (const login of members) {
+      items.push(profileItem(login, slug, now));
+      contestants.add(login);
+    }
   }
   console.log(`teams: ${slugs.length} (${items.length} items incl. member profiles)`);
 
@@ -114,6 +136,7 @@ async function collect(): Promise<DynamoItem[]> {
     const value = Number(points);
     if (!Number.isFinite(value) || value <= 0) continue;
     items.push(spendItem(login, value, now));
+    contestants.add(login);
     spendCount++;
   }
   console.log(`hint spend rows: ${spendCount}`);
@@ -125,6 +148,7 @@ async function collect(): Promise<DynamoItem[]> {
   let purchaseCount = 0;
   for (const key of hintKeys) {
     const login = key.slice("ctf:user:".length, -":hints".length);
+    contestants.add(login);
     const [membersRes] = await pipeline([["SMEMBERS", key]]);
     for (const member of Array.isArray(membersRes.result) ? (membersRes.result as string[]) : []) {
       const slash = member.indexOf("/");
@@ -154,6 +178,13 @@ async function collect(): Promise<DynamoItem[]> {
   }
   console.log(`hint texts: ${textCount} across ${textHashKeys.length} apps`);
 
+  // Contestant registry rows come last so the counts above stay comparable to
+  // earlier runs. registeredAt = backfill time: the real first-sign-in moment
+  // was never recorded, and the conditional write below keeps any row the
+  // auth hook already created (with its truthful timestamp) untouched.
+  for (const login of [...contestants].sort()) items.push(contestantItem(login, now));
+  console.log(`contestants: ${contestants.size}`);
+
   return items;
 }
 
@@ -169,11 +200,30 @@ async function main() {
   }
 
   const dynamo = new DynamoDBClient({ region: AWS_REGION });
+  let skipped = 0;
   for (const item of items) {
-    await dynamo.send(new PutItemCommand({ TableName: TABLE, Item: item }));
+    // First-sign-in-wins for the contestant registry: the auth hook owns that
+    // partition, so the backfill only fills gaps and never overwrites.
+    const guarded = item.pk.S === CONTESTANTS_PK;
+    try {
+      await dynamo.send(
+        new PutItemCommand({
+          TableName: TABLE,
+          Item: item,
+          ...(guarded ? { ConditionExpression: "attribute_not_exists(pk)" } : {}),
+        }),
+      );
+    } catch (err) {
+      if (guarded && err instanceof ConditionalCheckFailedException) {
+        console.log(`skip ${item.pk.S} / ${item.sk.S} (already registered)`);
+        skipped++;
+        continue;
+      }
+      throw err;
+    }
     console.log(`put ${item.pk.S} / ${item.sk.S}`);
   }
-  console.log(`\nDone — ${items.length} items written.`);
+  console.log(`\nDone — ${items.length - skipped} items written, ${skipped} already-registered contestants kept.`);
 }
 
 main().catch((err) => {
