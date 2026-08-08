@@ -16,6 +16,11 @@
 //                                               by the backfill (Upstash stays
 //                                               the authority — re-backfill
 //                                               after any re-seeding)
+//   pk=CONTESTANTS      sk=AUTHOR#<login>       one item per GitHub login that has
+//                                               completed sign-in (login,
+//                                               registeredAt) — lets /leaderboard
+//                                               show a contestant before the
+//                                               scorer has seen a PR from them
 //   pk=STATS            sk=COUNTRY#<iso2>       aggregate reach counter (count N).
 //                                               Deliberately a bare tally: no
 //                                               login, no IP, no timestamp, and
@@ -38,6 +43,7 @@ import type { AttributeValue } from "@aws-sdk/client-dynamodb";
 export type DynamoItem = Record<string, AttributeValue>;
 
 export const STATS_PK = "STATS";
+export const CONTESTANTS_PK = "CONTESTANTS";
 export const TEAMS_PK = "TEAMS";
 export const HINTSPEND_PK = "HINTSPEND";
 export const HINTS_PK = "HINTS";
@@ -49,6 +55,7 @@ export const teamSk = (slug: string) => `TEAM#${slug}`;
 export const userPk = (login: string) => `USER#${login}`;
 export const hintSk = (app: string, id: string) => `${HINT_SK_PREFIX}${app}#${id}`;
 export const spendSk = (login: string) => `AUTHOR#${login}`;
+export const contestantSk = (login: string) => `AUTHOR#${login}`;
 export const gateSk = (ip: string) => `IP#${ip}`;
 export const countrySk = (code: string) => `COUNTRY#${code}`;
 
@@ -109,6 +116,15 @@ export function hintTextItem(args: { app: string; id: string; text: string; upda
     challengeId: { S: args.id },
     text: { S: args.text },
     updatedAt: { S: args.updatedAt },
+  };
+}
+
+export function contestantItem(login: string, registeredAt: string): DynamoItem {
+  return {
+    pk: { S: CONTESTANTS_PK },
+    sk: { S: contestantSk(login) },
+    login: { S: login },
+    registeredAt: { S: registeredAt },
   };
 }
 

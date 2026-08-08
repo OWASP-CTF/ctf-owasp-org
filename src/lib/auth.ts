@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 
 /**
@@ -106,6 +107,30 @@ export const auth = betterAuth({
     "/get-access-token",
     "/refresh-token",
   ],
+  hooks: {
+    // Registers the contestant on every completed GitHub sign-in so
+    // /leaderboard can show their name before the scorer has seen a PR from
+    // them (lib/registration-store.ts + lib/leaderboard/registered.ts).
+    //
+    // Fires only on real success: the callback handler calls setSessionCookie
+    // → setNewSession BEFORE throwing its redirect, and error redirects
+    // (redirectOnError) never reach that line, so `newSession` is null for
+    // every failure path. After hooks still run on the thrown redirect —
+    // dispatchAuthEndpoint catches APIErrors (redirects included) and runs
+    // runAfterHooks on the captured result (better-auth api/dispatch.mjs).
+    //
+    // recordContestant never throws (best-effort by contract), so this hook
+    // cannot turn a DynamoDB outage into a failed sign-in. The import is
+    // deferred so the AWS SDK graph loads on sign-in, not with every module
+    // that touches `auth`.
+    after: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== "/callback/:id") return;
+      const login = ctx.context.newSession?.user?.login;
+      if (typeof login !== "string" || login === "") return;
+      const { recordContestant } = await import("@/lib/registration-store");
+      await recordContestant(login);
+    }),
+  },
   socialProviders: {
     github: {
       clientId: process.env.GITHUB_CLIENT_ID!,

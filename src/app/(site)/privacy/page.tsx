@@ -12,6 +12,7 @@
 //   src/lib/dynamo-stats.ts .......... aggregate country counters
 //   src/lib/hint-store.ts ............ hint purchases
 //   src/lib/team-store.ts ............ team membership
+//   src/lib/registration-store.ts .... leaderboard registration at sign-in
 //   src/lib/dynamo-shapes.ts ......... every item shape in one place
 //
 // Tone note: this page reads as reassuring because the underlying design
@@ -138,7 +139,9 @@ export default function PrivacyPage() {
             <>
               Of those we keep exactly one: your{" "}
               <span className="text-white">GitHub login</span>, because the scorer credits
-              points to the account that authored a pull request. The rest renders the page
+              points to the account that authored a pull request. Completing sign-in records
+              that login (with a timestamp) so your name appears on the leaderboard right
+              away, before your first scored pull request. The rest renders the page
               you&apos;re on and is then forgotten.
             </>,
             <>
@@ -147,7 +150,7 @@ export default function PrivacyPage() {
               GitHub issues at sign-in. This app never calls the GitHub API, so keeping that
               token would mean holding a credential we have no use for.
             </>,
-            "There is no account database. Your session lives entirely in an encrypted cookie, so once it expires the sign-in has left nothing behind on our side.",
+            "There is no account database. Your session lives entirely in an encrypted cookie; once it expires, all that remains on our side is the leaderboard registration above — your public login and when you first signed in, nothing else.",
           ]}
         />
       </Card>
@@ -155,6 +158,11 @@ export default function PrivacyPage() {
       <Card heading="What we store while you compete">
         <Bullets
           items={[
+            <>
+              <span className="text-white">Leaderboard registration</span>: your GitHub login
+              and the time you first signed in, so your name shows on the leaderboard before
+              your first scored pull request.
+            </>,
             <>
               <span className="text-white">Team membership</span>: the team&apos;s name, who
               created it, and the GitHub logins of its members.

@@ -8,6 +8,7 @@ import PageHeader from "@/components/page-header";
 import Leaderboard from "@/components/leaderboard";
 import MockDataNotice from "@/components/mock-data-notice";
 import { getLeaderboardSource, getLeaderboardSourceMode } from "@/lib/leaderboard/source";
+import { withRegisteredContestants } from "@/lib/leaderboard/registered";
 import { withHintPenalties } from "@/lib/leaderboard/hint-penalties";
 import { withTeamStandings } from "@/lib/leaderboard/team-standings";
 import { formatRelativeTime } from "@/lib/relative-time";
@@ -20,10 +21,11 @@ export const metadata: Metadata = {
 
 export default async function LeaderboardPage() {
   const source = getLeaderboardSource();
-  // Penalties before team standings: team totals sum member points, so they
-  // must sum the already-deducted (and floored) values.
+  // Registered contestants first, so penalties and team sums see the full
+  // roster; then penalties before team standings: team totals sum member
+  // points, so they must sum the already-deducted (and floored) values.
   const [data, session] = await Promise.all([
-    source.getLeaderboard().then(withHintPenalties).then(withTeamStandings),
+    source.getLeaderboard().then(withRegisteredContestants).then(withHintPenalties).then(withTeamStandings),
     auth.api.getSession({ headers: await headers() }),
   ]);
 
