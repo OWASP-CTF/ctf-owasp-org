@@ -10,9 +10,9 @@
 
 import { useEffect, useState } from "react";
 import { event } from "@/lib/site";
+import { getEventPhase, type EventPhase } from "@/lib/event-phase";
 
 type Remaining = { days: number; hours: number; minutes: number; seconds: number };
-type Phase = "before" | "live" | "over";
 
 function getRemaining(targetMs: number): Remaining | null {
   const diff = targetMs - Date.now();
@@ -24,12 +24,6 @@ function getRemaining(targetMs: number): Remaining | null {
     minutes: Math.floor((totalSeconds % 3600) / 60),
     seconds: totalSeconds % 60,
   };
-}
-
-function getPhase(startMs: number, endMs: number): Phase {
-  const now = Date.now();
-  if (now < startMs) return "before";
-  return now < endMs ? "live" : "over";
 }
 
 const UNITS: [keyof Remaining, string][] = [
@@ -52,16 +46,15 @@ export default function EventCountdown({
   hideWhenComplete?: boolean;
 }) {
   const targetMs = new Date(event.ctfStartsAt).getTime();
-  const endMs = new Date(event.ctfEndsAt).getTime();
   const [mounted, setMounted] = useState(false);
   const [remaining, setRemaining] = useState<Remaining | null>(null);
-  const [phase, setPhase] = useState<Phase>("before");
+  const [phase, setPhase] = useState<EventPhase>("before");
 
   useEffect(() => {
     const tick = () => {
       setMounted(true);
       setRemaining(getRemaining(targetMs));
-      setPhase(getPhase(targetMs, endMs));
+      setPhase(getEventPhase(Date.now()));
     };
     // Defer the first tick to a callback (rather than calling setState
     // synchronously in the effect body) so it reads as a subscription to the
@@ -72,7 +65,7 @@ export default function EventCountdown({
       clearTimeout(timeout);
       clearInterval(interval);
     };
-  }, [targetMs, endMs]);
+  }, [targetMs]);
 
   if (mounted && !remaining) {
     if (hideWhenComplete) return null;
