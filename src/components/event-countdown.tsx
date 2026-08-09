@@ -4,11 +4,15 @@
 // second. To avoid a hydration mismatch, both the server render and the
 // client's first paint show the same "not mounted yet" placeholder — the
 // real countdown only appears after a useEffect runs post-hydration.
+//
+// Three phases, driven by the clock: counting down to the start, live during
+// the event, and a final sign-off once scoring closes.
 
 import { useEffect, useState } from "react";
 import { event } from "@/lib/site";
 
 type Remaining = { days: number; hours: number; minutes: number; seconds: number };
+type Phase = "before" | "live" | "over";
 
 function getRemaining(targetMs: number): Remaining | null {
   const diff = targetMs - Date.now();
@@ -20,6 +24,12 @@ function getRemaining(targetMs: number): Remaining | null {
     minutes: Math.floor((totalSeconds % 3600) / 60),
     seconds: totalSeconds % 60,
   };
+}
+
+function getPhase(startMs: number, endMs: number): Phase {
+  const now = Date.now();
+  if (now < startMs) return "before";
+  return now < endMs ? "live" : "over";
 }
 
 const UNITS: [keyof Remaining, string][] = [
@@ -36,19 +46,22 @@ export default function EventCountdown({
   /** "hero" — large centered blocks for the homepage. "compact" — smaller
    *  inline row for embedding in a page banner (e.g. the leaderboard). */
   variant?: "hero" | "compact";
-  /** When the countdown completes, render nothing instead of the "live"
-   *  banner — for contexts where a sibling element already explains what
-   *  happens at zero (e.g. the leaderboard's mock-data notice). */
+  /** Once the countdown reaches zero, render nothing instead of the "live" or
+   *  "over" banner — for contexts where a sibling element already explains
+   *  what happens at zero (e.g. the leaderboard's mock-data notice). */
   hideWhenComplete?: boolean;
 }) {
   const targetMs = new Date(event.ctfStartsAt).getTime();
+  const endMs = new Date(event.ctfEndsAt).getTime();
   const [mounted, setMounted] = useState(false);
   const [remaining, setRemaining] = useState<Remaining | null>(null);
+  const [phase, setPhase] = useState<Phase>("before");
 
   useEffect(() => {
     const tick = () => {
       setMounted(true);
       setRemaining(getRemaining(targetMs));
+      setPhase(getPhase(targetMs, endMs));
     };
     // Defer the first tick to a callback (rather than calling setState
     // synchronously in the effect body) so it reads as a subscription to the
@@ -59,10 +72,18 @@ export default function EventCountdown({
       clearTimeout(timeout);
       clearInterval(interval);
     };
-  }, [targetMs]);
+  }, [targetMs, endMs]);
 
   if (mounted && !remaining) {
     if (hideWhenComplete) return null;
+    if (phase === "over") {
+      return (
+        <div className="flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-6 py-3.5 text-sm font-medium text-muted">
+          <span className="h-2 w-2 flex-none rounded-full bg-zinc-500" aria-hidden="true" />
+          That&rsquo;s a wrap. Thanks for playing.
+        </div>
+      );
+    }
     return (
       <div className="flex items-center gap-2 rounded-lg border border-[#22c55e]/40 bg-[#22c55e]/10 px-6 py-3.5 text-sm font-medium text-[#22c55e]">
         <span
