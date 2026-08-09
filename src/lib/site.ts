@@ -9,6 +9,9 @@ export const event = {
   // Friday, August 7, 2026, 10:00 AM Pacific Daylight Time (Las Vegas).
   // ISO with explicit offset so it resolves to the same instant everywhere.
   ctfStartsAt: "2026-08-07T10:00:00-07:00",
+  // Sunday, August 9, 2026, 12:00 PM Pacific — scoring closed. Past this
+  // instant the countdown's live banner is replaced by a final sign-off.
+  ctfEndsAt: "2026-08-09T12:00:00-07:00",
   // Full DEF CON schedule (talks, villages, timing) lives in HackerTracker,
   // not on this site — we only own CTF-specific content.
   hackerTrackerUrl: "https://hackertracker.app",
