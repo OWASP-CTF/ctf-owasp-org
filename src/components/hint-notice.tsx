@@ -2,11 +2,31 @@
 // until HINTS_ENABLED flips at the event, the per-challenge 💡 buttons don't
 // render at all, so this is what tells contestants hints will exist here. Once
 // hints are live it switches to a short "how it works" so the buttons below
-// need no explanation. Static-safe Server Component (flag is baked at build).
+// need no explanation. Static-safe Server Component (flag is baked at build;
+// the phase comes from the clock at render, and this page is ISR-revalidated).
 
 import EventCountdown from "./event-countdown";
+import { currentEventPhase } from "@/lib/event-phase";
 
 export default function HintNotice({ active, cost }: { active: boolean; cost: number }) {
+  // Checked before `active`: HINTS_ENABLED may well be left switched on after
+  // the event, and "Hints are live" would be the wrong thing to say then.
+  if (currentEventPhase() === "over") {
+    return (
+      <div className="ds-card flex items-start gap-3 rounded-lg border border-white/15 bg-white/5 p-5">
+        <span aria-hidden className="text-lg leading-none">💡</span>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted">Hints are closed</p>
+          <p className="mt-1 text-sm leading-relaxed text-zinc-300">
+            The CTF has ended, so hints are no longer available. During the event, revealing one
+            cost <span className="font-mono tabular-nums text-zinc-400">−{cost} pts</span> off your
+            leaderboard score. The challenges below stay up to work through at your own pace.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (active) {
     return (
       <div className="ds-card flex items-start gap-3 rounded-lg border border-[#d4a017]/30 bg-[#d4a017]/[0.06] p-5">
